@@ -109,6 +109,10 @@ namespace zip2.list
             foreach (var opt in opts)
             {
                 var prefix = $"--{opt.Name()}=";
+                if (opt is ParameterSwitch)
+                {
+                    prefix = $"--{opt.Name()} ";
+                }
                 Console.WriteLine($"  {prefix,20}{opt.OnlineHelp()}");
             }
 
@@ -172,6 +176,7 @@ namespace zip2.list
             return (new ZipFile(File.OpenRead(filename)))
             .GetZipEntries()
             .Invoke((seq) => Sort.Invoke(seq))
+            .Invoke((seq) => MoreFunc(seq))
             .Select((itm) =>
             {
                 Console.Write(itm.ToConsoleText());
@@ -204,6 +209,7 @@ namespace zip2.list
                                     (ZipEntrySum acc, ZipEntry itm) =>
                                     acc.AddWith(itm)))
                             .Invoke((seq) => SortSum!.Invoke(seq))
+                            .Invoke((seq) => MoreFuncSum!(seq))
                             .Select((grp) =>
                             {
                                 Console.Write(
@@ -227,6 +233,7 @@ namespace zip2.list
                                         (ZipEntrySum acc, ZipEntry itm) =>
                                         acc.AddWith(itm)))
                                 .Invoke((seq) => SortSum!.Invoke(seq))
+                                .Invoke((seq) => MoreFuncSum!(seq))
                                 .Select((grp) =>
                                 {
                                     Console.Write(
@@ -237,6 +244,8 @@ namespace zip2.list
                                 Path.GetFileName(filename)),
                                 (acc, itm) => acc.AddWith(itm)));
                         default:
+                            Console.WriteLine(
+                                $"'{val}' is unknown to '--{opt.Name()}'");
                             return false;
                     }
                 });
@@ -295,9 +304,22 @@ namespace zip2.list
                                 Feature.RatioText(it.Size,it.CompressedSize));
                             return true;
                         default:
+                            Console.WriteLine(
+                                $"'{val}' is unknown to '--{opt.Name()}'");
                             return false;
                     }
                 });
+
+        static Func<IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>
+            MoreFunc = Seq<ZipEntry>.NoChange;
+        static Func<IEnumerable<ZipEntrySum>,IEnumerable<ZipEntrySum>>
+            MoreFuncSum = Seq<ZipEntrySum>.NoChange;
+        static ParameterSwitch Reverse = new ParameterSwitch(
+            "reverse", whenSwitch: () =>
+            {
+                MoreFunc = (seq) => seq.Reverse();
+                MoreFuncSum = (seq) => seq.Reverse();
+            });
 
         static IParser[] opts = new IParser[] {
             Opt.Show,
@@ -307,6 +329,7 @@ namespace zip2.list
             (IParser) DateFormat,
             (IParser) Sort,
             (IParser) SumUp,
+            (IParser) Reverse,
             };
     }
 

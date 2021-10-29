@@ -161,11 +161,20 @@ namespace zip2
 
     public class ParameterSwitch: ParameterOption<bool>
     {
+        Action _whenSwitch = () => {};
         public ParameterSwitch(string option)
             : base(option,string.Empty,false,
             requiredSingleValue:false)
         {
         }
+
+        public ParameterSwitch(string option, Action whenSwitch)
+            : base(option,string.Empty,false,
+            requiredSingleValue:false)
+        {
+            _whenSwitch = whenSwitch;
+        }
+
         public override bool IsPrefix(string arg)
         {
             return arg.Equals($"--{OptionName}");
@@ -177,6 +186,7 @@ namespace zip2
         public override bool Parse(string value)
         {
             _value = true;
+            _whenSwitch();
             return true;
         }
     }
