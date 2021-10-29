@@ -171,6 +171,7 @@ namespace zip2.list
         {
             return (new ZipFile(File.OpenRead(filename)))
             .GetZipEntries()
+            .Invoke((seq) => Sort.Invoke(seq))
             .Select((itm) =>
             {
                 Console.Write(itm.ToConsoleText());
@@ -190,6 +191,8 @@ namespace zip2.list
                     switch (val)
                     {
                         case "ext":
+                            Opt.Show.Crc = (_) => string.Empty;
+                            Opt.Show.CrcTotal = () => string.Empty;
                             return opt.SetValue((filename) =>
                             (new ZipFile( File.OpenRead(filename)))
                             .GetZipEntries()
@@ -198,7 +201,9 @@ namespace zip2.list
                                 new ZipEntrySum(
                                     string.IsNullOrEmpty(grp.Key)
                                     ? "*NoExt*" : grp.Key),
-                            (ZipEntrySum acc, ZipEntry itm) => acc.AddWith(itm)))
+                                    (ZipEntrySum acc, ZipEntry itm) =>
+                                    acc.AddWith(itm)))
+                            .Invoke((seq) => SortSum!.Invoke(seq))
                             .Select((grp) =>
                             {
                                 Console.Write(
@@ -209,6 +214,8 @@ namespace zip2.list
                                 Path.GetFileName(filename)),
                                 (acc, itm) => acc.AddWith(itm)));
                         case "dir":
+                            Opt.Show.Crc = (_) => string.Empty;
+                            Opt.Show.CrcTotal = () => string.Empty;
                             return opt.SetValue((filename) =>
                             (new ZipFile( File.OpenRead(filename)))
                             .GetZipEntries()
@@ -217,7 +224,9 @@ namespace zip2.list
                                     new ZipEntrySum(
                                         string.IsNullOrEmpty(grp.Key)
                                         ? "*NoExt*" : grp.Key),
-                                (ZipEntrySum acc, ZipEntry itm) => acc.AddWith(itm)))
+                                        (ZipEntrySum acc, ZipEntry itm) =>
+                                        acc.AddWith(itm)))
+                                .Invoke((seq) => SortSum!.Invoke(seq))
                                 .Select((grp) =>
                                 {
                                     Console.Write(
@@ -232,12 +241,71 @@ namespace zip2.list
                     }
                 });
 
+        static Func<IEnumerable<ZipEntrySum>,IEnumerable<ZipEntrySum>>
+            SortSum = Seq<ZipEntrySum>.NoChange;
+
+        static ParameterFunction<
+        IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>
+        Sort = new ParameterFunctionSetter<
+        IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>(
+            option:"sort", help:"name|ext|size|date|last|count|ratio",
+            defaultValue: Seq<ZipEntry>.NoChange,
+                parse: (val,opt) =>
+                {
+                    switch (val)
+                    {
+                        case "name":
+                            opt.SetValue(
+                                (seq) => seq.OrderBy((it) => it.Name));
+                            SortSum =
+                                (seq) => seq.OrderBy((it) => it.Name);
+                            return true;
+                        case "ext":
+                            opt.SetValue(
+                                (seq) => seq
+                                .OrderBy((it) => Path.GetExtension(it.Name))
+                                .ThenBy((it) => it.Name));
+                            return true;
+                        case "size":
+                            opt.SetValue(
+                                (seq) => seq.OrderBy((it) => it.Size));
+                            SortSum =
+                                (seq) => seq.OrderBy((it) => it.Size);
+                            return true;
+                        case "date":
+                            opt.SetValue(
+                                (seq) => seq.OrderBy((it) => it.DateTime));
+                            SortSum =
+                                (seq) => seq.OrderBy((it) => it.DateTime);
+                            return true;
+                        case "last":
+                            SortSum =
+                                (seq) => seq.OrderBy((it) => it.DateTimeLast);
+                            return true;
+                        case "count":
+                            SortSum =
+                                (seq) => seq.OrderBy((it) => it.Count);
+                            return true;
+                        case "ratio":
+                            opt.SetValue(
+                                (seq) => seq.OrderBy((it) =>
+                                Feature.RatioText(it.Size,it.CompressedSize)));
+                            SortSum =
+                                (seq) => seq.OrderBy((it) =>
+                                Feature.RatioText(it.Size,it.CompressedSize));
+                            return true;
+                        default:
+                            return false;
+                    }
+                });
+
         static IParser[] opts = new IParser[] {
             Opt.Show,
             Opt.Hide,
             Opt.Total,
             (IParser) SizeFormat,
             (IParser) DateFormat,
+            (IParser) Sort,
             (IParser) SumUp,
             };
     }
@@ -245,9 +313,9 @@ namespace zip2.list
     sealed internal class Opt: ParameterOptionSetter<bool>
     {
         static public readonly Opt Show = new Opt();
-        public Func<long, string> Crc { get; private set; }
+        public Func<long, string> Crc { get; set; }
         = (_) => string.Empty;
-        public Func<string> CrcTotal { get; internal set; }
+        public Func<string> CrcTotal { get; set; }
         = () => string.Empty;
         public Func<string,string> CompressedText { get; private set;}
         = (_) => string.Empty;

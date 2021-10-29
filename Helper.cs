@@ -118,4 +118,10 @@ namespace zip2
             return parts[0];
         }
     }
+
+    internal class Seq<T>
+    {
+        static readonly public Func<IEnumerable<T>,IEnumerable<T>>
+        NoChange = (seq) => seq;
+    }
 }

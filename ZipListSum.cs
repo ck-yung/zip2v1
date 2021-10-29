@@ -56,5 +56,19 @@ namespace zip2
             foreach (ZipEntry item in arg)
                 yield return item;
         }
+
+        static public IEnumerable<ZipEntry> Invoke(
+            this IEnumerable<ZipEntry> seq,
+            Func<IEnumerable<ZipEntry>,IEnumerable<ZipEntry>> func)
+        {
+            return func(seq);
+        }
+
+        static public IEnumerable<ZipEntrySum> Invoke(
+            this IEnumerable<ZipEntrySum> seq,
+            Func<IEnumerable<ZipEntrySum>,IEnumerable<ZipEntrySum>> func)
+        {
+            return func(seq);
+        }
     }
 }
