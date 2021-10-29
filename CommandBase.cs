@@ -190,4 +190,56 @@ namespace zip2
             return true;
         }
     }
+    public interface ISwitch
+    {
+        void WhenSwitch();
+    }
+
+    public class ParameterFunctionSwitch<T, R> :
+        ParameterFunction<T, R>, ISwitch
+    {
+        Func<T, R> altValue;
+        Action _whenSwitch = () => { };
+        public ParameterFunctionSwitch(string option, string help,
+            Func<T, R> defaultValue, Func<T, R> altValue)
+            : base(option, help, defaultValue,
+            requiredSingleValue: true)
+        {
+            this.altValue = altValue;
+        }
+
+        public ParameterFunctionSwitch(string option, string help,
+            Func<T, R> defaultValue, Func<T, R> altValue,
+            Action whenSwitch)
+            : base(option, help, defaultValue,
+            requiredSingleValue: true)
+        {
+            this.altValue = altValue;
+            _whenSwitch = whenSwitch;
+        }
+
+        public override bool IsPrefix(string arg)
+        {
+            return arg.Equals($"--{OptionName}");
+        }
+        public override IEnumerable<string> ToValues(string arg)
+        {
+            yield return arg;
+        }
+        public override bool Parse(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+            _value = altValue;
+            WhenSwitch();
+            return true;
+        }
+
+        public void WhenSwitch()
+        {
+            _whenSwitch();
+        }
+    }
 }

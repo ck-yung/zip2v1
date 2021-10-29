@@ -109,7 +109,7 @@ namespace zip2.list
             foreach (var opt in opts)
             {
                 var prefix = $"--{opt.Name()}=";
-                if (opt is ParameterSwitch)
+                if (opt is ISwitch || opt is ParameterSwitch)
                 {
                     prefix = $"--{opt.Name()} ";
                 }
@@ -176,7 +176,7 @@ namespace zip2.list
             return (new ZipFile(File.OpenRead(filename)))
             .GetZipEntries()
             .Invoke((seq) => Sort.Invoke(seq))
-            .Invoke((seq) => MoreFunc(seq))
+            .Invoke((seq) => ReverseEntry(seq))
             .Select((itm) =>
             {
                 Console.Write(itm.ToConsoleText());
@@ -209,7 +209,7 @@ namespace zip2.list
                                     (ZipEntrySum acc, ZipEntry itm) =>
                                     acc.AddWith(itm)))
                             .Invoke((seq) => SortSum!.Invoke(seq))
-                            .Invoke((seq) => MoreFuncSum!(seq))
+                            .Invoke((seq) => Reverse!.Invoke(seq))
                             .Select((grp) =>
                             {
                                 Console.Write(
@@ -233,7 +233,7 @@ namespace zip2.list
                                         (ZipEntrySum acc, ZipEntry itm) =>
                                         acc.AddWith(itm)))
                                 .Invoke((seq) => SortSum!.Invoke(seq))
-                                .Invoke((seq) => MoreFuncSum!(seq))
+                                .Invoke((seq) => Reverse!.Invoke(seq))
                                 .Select((grp) =>
                                 {
                                     Console.Write(
@@ -348,14 +348,18 @@ namespace zip2.list
                 });
 
         static Func<IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>
-            MoreFunc = Seq<ZipEntry>.NoChange;
-        static Func<IEnumerable<ZipEntrySum>,IEnumerable<ZipEntrySum>>
-            MoreFuncSum = Seq<ZipEntrySum>.NoChange;
-        static ParameterSwitch Reverse = new ParameterSwitch(
-            "reverse", whenSwitch: () =>
+            ReverseEntry = Seq<ZipEntry>.NoChange;
+        static readonly ParameterFunctionSwitch<
+            IEnumerable<ZipEntrySum>, IEnumerable<ZipEntrySum>> Reverse =
+            new ParameterFunctionSwitch<
+                IEnumerable<ZipEntrySum>, IEnumerable<ZipEntrySum>>(
+            "reverse", help:string.Empty,
+            defaultValue: Seq<ZipEntrySum>.NoChange,
+            altValue: (seq) => seq.Reverse(),
+            whenSwitch: () =>
             {
-                MoreFunc = (seq) => seq.Reverse();
-                MoreFuncSum = (seq) => seq.Reverse();
+                Console.WriteLine("[dbg] entry reverse is assigned.");
+                ReverseEntry = (seq) => seq.Reverse();
             });
 
         static IParser[] opts = new IParser[] {
