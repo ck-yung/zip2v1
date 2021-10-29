@@ -1,59 +1,85 @@
+using System.Text;
 using ICSharpCode.SharpZipLib.Zip;
 
 namespace zip2.list
 {
-    internal class Command : CommandBase
+    public static class Feature
     {
-        string ToRatioText(long originalSize, long compressedSize)
+        internal static string ToConsoleText(this ZipEntry arg)
         {
-            if (originalSize < 1) return " 0 ";
-            if (compressedSize >= originalSize) return "-0 ";
-            compressedSize = originalSize - compressedSize;
-            compressedSize *= 100;
-            compressedSize /= originalSize;
-            if (compressedSize < 1L) return " 0 ";
-            if (compressedSize > 98L) return "99 ";
-            return string.Format("{0,2} ", compressedSize);
+            StringBuilder tmp = new(RatioText(
+                arg.Size,arg.CompressedSize));
+            tmp.Append(SizeText(arg.Size));
+            tmp.Append(CompressedText(arg.CompressedSize));
+            tmp.Append(CrcText(arg.Crc));
+            tmp.Append(DateText(arg.DateTime));
+            tmp.Append(CryptedMask(arg.IsCrypted));
+            tmp.Append(arg.Name);
+            return tmp.ToString();
         }
 
+        public static string RatioText(
+            long original, long compressed)
+        {
+            if (original < 1) return " 0 ";
+            if (compressed >= original) return "-0 ";
+            compressed = original - compressed;
+            compressed *= 100;
+            compressed /= original;
+            if (compressed < 1L) return " 0 ";
+            if (compressed > 98L) return "99 ";
+            return $"{compressed,2} ";
+        }
+
+        public static string SizeText(long size)
+        {
+            return $"{size,8} ";
+        }
+
+        public static string CompressedText(long compressed)
+        {
+            return $"{compressed,8} ";
+        }
+
+        public static string CrcText(long crc)
+        {
+            return crc.ToString("X08")+ " ";
+        }
+
+        public static string CrcTotalText()
+        { // ...... 123456789
+            return "         ";
+        }
+
+        public static string CryptedMask(bool crypted)
+        {
+            return crypted ? "*" : " ";
+        }
+
+        public static string DateText(DateTime datetime)
+        {
+            return datetime.ToString("yyyy-MM-dd HH:mm:ss ");
+        }
+
+        public static string CountText(int count)
+        {
+            return $"{count,4} ";
+        }
+    }
+
+    internal class Command : CommandBase
+    {
         public override int Invoke()
         {
-            int cntFound = 0;
-            long totalSize = 0L;
-            long totalCompressedSize = 0L;
-            // ..................... 12345678-
-            string CrcInTotalLine = "         ";
-            bool anyCrypted = false;
-            DateTime MostEarlyDate = DateTime.MaxValue;
-            DateTime MostLastDate = DateTime.MinValue;
+            ZipEntrySum sum = new(Path.GetFileName(zipFilename));
             using var fs = File.OpenRead(zipFilename);
             var zipThe = new ZipFile(fs);
             foreach (ZipEntry itm in zipThe)
             {
-                Console.Write(ToRatioText(itm.Size, itm.CompressedSize));
-                Console.Write(string.Format("{0,12} ", itm.Size));
-                Console.Write(string.Format("{0,12} ", itm.CompressedSize));
-                Console.Write(itm.Crc.ToString("X08")+ " ");
-                Console.Write(itm.DateTime.ToString("yyyy-MM-dd HH:mm "));
-                Console.Write(itm.IsCrypted ? "*" : " ");
-                Console.WriteLine(itm.Name);
-                cntFound += 1;
-                totalSize += itm.Size;
-                totalCompressedSize = +itm.CompressedSize;
-                if (MostEarlyDate > itm.DateTime) MostEarlyDate = itm.DateTime;
-                if (MostLastDate < itm.DateTime) MostLastDate = itm.DateTime;
-                if (itm.IsCrypted) anyCrypted = true;
+                Console.WriteLine(itm.ToConsoleText());
+                sum.AddWith(itm);
             }
-            Console.Write(ToRatioText(totalSize, totalCompressedSize));
-            Console.Write(string.Format("{0,12} ", totalSize));
-            Console.Write(string.Format("{0,12} ", totalCompressedSize));
-            Console.Write(CrcInTotalLine);
-            Console.Write(MostEarlyDate.ToString("yyyy-MM-dd HH:mm "));
-            Console.Write("- ");
-            Console.Write(MostLastDate.ToString("yyyy-MM-dd HH:mm "));
-            Console.Write(anyCrypted ? "*" : " ");
-            Console.Write($"(#file={cntFound}) ");
-            Console.WriteLine(Path.GetFileName(zipFilename));
+            Console.WriteLine(sum.ToString());
             return 0;
         }
 

@@ -1,4 +1,5 @@
 .vs/*
+.vscode/*
 nupkg/*
 *.csproj.user
 bin/*
