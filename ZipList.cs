@@ -10,9 +10,10 @@ namespace zip2.list
             StringBuilder tmp = new(Opt.Hide.RatioText(
                 Feature.RatioText(arg.Size,arg.CompressedSize)));
             tmp.Append(Opt.Hide.SizeText(
-                Feature.SizeText(arg.Size)));
-            tmp.Append(CompressedText(arg.CompressedSize));
-            tmp.Append(CrcText(arg.Crc));
+                Command.SizeFormat.Invoke(arg.Size)));
+            tmp.Append(Opt.Show.CompressedText(
+                Command.SizeFormat.Invoke(arg.CompressedSize)));
+            tmp.Append(Opt.Show.Crc(arg.Crc));
             tmp.Append(Opt.Hide.DateText(
                 Feature.DateText(arg.DateTime)));
             tmp.Append(Opt.Hide.CryptedMarkText(
@@ -26,12 +27,13 @@ namespace zip2.list
             StringBuilder tmp = new(Opt.Hide.RatioText(
                 Feature.RatioText(arg.Size, arg.CompressedSize)));
 
-            tmp.Append(Feature.CompressedText(
-                arg.CompressedSize));
+            tmp.Append(Opt.Hide.SizeText(
+                Command.SizeFormat.Invoke(arg.Size)));
 
-            tmp.Append(Opt.Hide.SizeText(Feature.SizeText(arg.Size)));
+            tmp.Append(Opt.Show.CompressedText(
+                Command.SizeFormat.Invoke(arg.CompressedSize)));
 
-            tmp.Append(Feature.CrcTotalText());
+            tmp.Append(Opt.Show.CrcTotal());
 
             var dateText = Opt.Hide.DateText(Feature.DateText(arg.DateTime));
             if (!string.IsNullOrEmpty(dateText))
@@ -57,27 +59,6 @@ namespace zip2.list
             if (compressed < 1L) return " 0 ";
             if (compressed > 98L) return "99 ";
             return $"{compressed,2} ";
-        }
-
-        public static string SizeText(long size)
-        {
-            return $"{size,8} ";
-        }
-
-        public static string CompressedText(long compressed)
-        {
-            return Opt.Show
-                .CompressedText($"{compressed,8} ");
-        }
-
-        public static string CrcText(long crc)
-        {
-            return Opt.Show.Crc(crc);
-        }
-
-        public static string CrcTotalText()
-        {
-            return Opt.Show.CrcTotal();
         }
 
         public static string CryptedMask(bool crypted)
@@ -128,10 +109,21 @@ namespace zip2.list
             (string[] founds2, var others2) = others
             .SubractStartsWith(Opt.Hide.IsPrefix,
             toValues: (seq) => seq.Select(
-                (it) => Opt.Show.ToValues(it))
+                (it) => Opt.Hide.ToValues(it))
                 .SelectMany((seq2) => seq2));
 
             if (!founds2.All((it) => Opt.Hide.Parse(it)))
+            {
+                return false;
+            }
+
+            (string[] founds3, var others3) = others
+            .SubractStartsWith(SizeFormat.IsPrefix,
+            toValues: (seq) => seq
+            .Select((it) => SizeFormat.ToValues(it))
+            .SelectMany((it) => it));
+
+            if (!founds3.All((it) => SizeFormat.Parse(it)))
             {
                 return false;
             }
@@ -148,12 +140,46 @@ namespace zip2.list
                 var prefix = $"--{opt.Name()}=";
                 Console.WriteLine($"  {prefix,20}{opt.OnlineHelp()}");
             }
+
             return 0;
         }
+
+        static public ParameterFunction<long, string> SizeFormat =
+            new ParameterFunctionSetter<long, string>(
+            option: "size-format", "normal|comma",
+            defaultValue: (size) =>
+            {
+                char[] units = new char[] { ' ', 'k', 'm' };
+                foreach (var unit in units)
+                {
+                    if (size < 10000L)
+                    {
+                        return string.Format("{0,4}{1} ", size, unit);
+                    }
+                    size /= 1024L;
+                }
+                return string.Format("{0,4}g ", size);
+            },
+            parse: (val, obj) =>
+            {
+                switch (val)
+                {
+                    case "comma":
+                        return obj.SetValue((size) =>
+                        string.Format("{0,18:#,#} ", size));
+                    case "normal":
+                        return obj.SetValue((arg) =>
+                        string.Format("{0,9} ", arg));
+                    default:
+                        Console.WriteLine($"'{val}' is unknown to '{obj.Name()}'");
+                        return false;
+                }
+            });
 
         static IParser[] opts = new IParser[] {
             Opt.Show,
             Opt.Hide,
+            (IParser) SizeFormat,
             };
     }
 
@@ -248,4 +274,5 @@ namespace zip2.list
 
         static internal HideClass Hide = new();
     }
+
 }
