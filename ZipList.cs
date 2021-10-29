@@ -45,7 +45,8 @@ namespace zip2.list
                     Command.DateFormat.Invoke(arg.DateTimeLast)));
             }
 
-            tmp.Append(Opt.Hide.CountText(arg.Count));
+            tmp.Append(Opt.Hide.CountText(
+                Command.CountFormat.Invoke(arg.Count)));
             tmp.Append(Opt.Hide.CryptedMarkText(arg.AnyCrypted));
             tmp.Append(arg.Name);
             tmp.Append(Environment.NewLine);
@@ -149,6 +150,21 @@ namespace zip2.list
                         Console.WriteLine($"'{val}' is unknown to '--{obj.Name()}'");
                         return false;
                 }
+            });
+
+        static public ParameterFunction<int, string> CountFormat =
+            new ParameterFunctionSetter<int, string>(
+            option: "count-width", "NUMBER",
+            defaultValue: (count) => $"{count,4} ",
+            parse: (val, obj) =>
+            {
+                if (int.TryParse(val, out int widthThe))
+                {
+                    var fmt = $"{{0,{widthThe}}} ";
+                    obj.SetValue((it) => String.Format(fmt,it));
+                    return true;
+                }
+                return false;
             });
 
         static public ParameterFunction<DateTime, string> DateFormat =
@@ -358,7 +374,6 @@ namespace zip2.list
             altValue: (seq) => seq.Reverse(),
             whenSwitch: () =>
             {
-                Console.WriteLine("[dbg] entry reverse is assigned.");
                 ReverseEntry = (seq) => seq.Reverse();
             });
 
@@ -368,6 +383,7 @@ namespace zip2.list
             Opt.Total,
             (IParser) SizeFormat,
             (IParser) DateFormat,
+            (IParser) CountFormat,
             (IParser) Sort,
             (IParser) SumUp,
             (IParser) Reverse,
@@ -423,8 +439,8 @@ namespace zip2.list
             = (it) => it;
             public Func<bool,string> CryptedMarkText { get; private set;}
             = (it) => it ? "*" : " ";
-            public Func<int,string> CountText { get; private set;}
-            = (it) => $"{it,5} ";
+            public Func<string,string> CountText { get; private set;}
+            = (it) => it;
 
             internal HideClass() : base("hide",
             "ratio,size,date,crypted,count",
