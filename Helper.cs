@@ -109,5 +109,13 @@ namespace zip2
 
             return (startingWith,others);
         }
+
+        static public string GetRootDirectory(this string arg)
+        {
+            if (string.IsNullOrEmpty(arg)) return "?";
+            var parts = arg.Split('/', '\\');
+            if (parts.Length == 1) return ".";
+            return parts[0];
+        }
     }
 }

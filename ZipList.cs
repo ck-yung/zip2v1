@@ -70,17 +70,7 @@ namespace zip2.list
     {
         public override int Invoke()
         {
-            using var fs = File.OpenRead(zipFilename);
-            var zipThe = new ZipFile(fs);
-            var sum = zipThe.GetZipEntries()
-            .Select((itm) =>
-            {
-                Console.Write(itm.ToConsoleText());
-                return itm;
-            })
-            .Aggregate( new ZipEntrySum(Path.GetFileName(zipFilename)),
-            (acc,itm) => acc.AddWith(itm));
-
+            var sum = SumUp.Invoke(zipFilename);
             Console.Write(sum.ToConsoleText());
             return 0;
         }
@@ -177,12 +167,78 @@ namespace zip2.list
                 }
             });
 
+        static ZipEntrySum sumDefaultInvoke(string filename)
+        {
+            return (new ZipFile(File.OpenRead(filename)))
+            .GetZipEntries()
+            .Select((itm) =>
+            {
+                Console.Write(itm.ToConsoleText());
+                return itm;
+            })
+            .Aggregate( new ZipEntrySum( Path.GetFileName(
+                filename)),
+            (acc,itm) => acc.AddWith(itm));
+        }
+
+        static ParameterFunction<string,ZipEntrySum> SumUp =
+            new ParameterFunctionSetter<string,ZipEntrySum>(
+                option:"sum", help:"ext|dir",
+                defaultValue: sumDefaultInvoke,
+                parse: (val,opt) =>
+                {
+                    switch (val)
+                    {
+                        case "ext":
+                            return opt.SetValue((filename) =>
+                            (new ZipFile( File.OpenRead(filename)))
+                            .GetZipEntries()
+                            .GroupBy((item) => Path.GetExtension(item.Name))
+                            .Select((grp) => grp.Aggregate(
+                                new ZipEntrySum(
+                                    string.IsNullOrEmpty(grp.Key)
+                                    ? "*NoExt*" : grp.Key),
+                            (ZipEntrySum acc, ZipEntry itm) => acc.AddWith(itm)))
+                            .Select((grp) =>
+                            {
+                                Console.Write(
+                                    Opt.Total.ItemText(grp.ToConsoleText()));
+                                return grp;
+                            })
+                            .Aggregate(new ZipEntrySum(
+                                Path.GetFileName(filename)),
+                                (acc, itm) => acc.AddWith(itm)));
+                        case "dir":
+                            return opt.SetValue((filename) =>
+                            (new ZipFile( File.OpenRead(filename)))
+                            .GetZipEntries()
+                                .GroupBy((item) => item.Name.GetRootDirectory())
+                                .Select((grp) => grp.Aggregate(
+                                    new ZipEntrySum(
+                                        string.IsNullOrEmpty(grp.Key)
+                                        ? "*NoExt*" : grp.Key),
+                                (ZipEntrySum acc, ZipEntry itm) => acc.AddWith(itm)))
+                                .Select((grp) =>
+                                {
+                                    Console.Write(
+                                        Opt.Total.ItemText(grp.ToConsoleText()));
+                                    return grp;
+                                })
+                            .Aggregate(new ZipEntrySum(
+                                Path.GetFileName(filename)),
+                                (acc, itm) => acc.AddWith(itm)));
+                        default:
+                            return false;
+                    }
+                });
+
         static IParser[] opts = new IParser[] {
             Opt.Show,
             Opt.Hide,
+            Opt.Total,
             (IParser) SizeFormat,
             (IParser) DateFormat,
-            Opt.Total,
+            (IParser) SumUp,
             };
     }
 

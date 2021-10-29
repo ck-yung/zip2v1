@@ -33,6 +33,19 @@ namespace zip2
             if (arg.IsCrypted) AnyCrypted = true;
             return this;
         }
+
+        public ZipEntrySum AddWith(ZipEntrySum arg)
+        {
+            Count += arg.Count;
+            Size += arg.Size;
+            CompressedSize += arg.CompressedSize;
+            if (DateTime > arg.DateTime)
+                DateTime = arg.DateTime;
+            if (DateTimeLast < arg.DateTime)
+                DateTimeLast = arg.DateTime;
+            if (arg.AnyCrypted) AnyCrypted = true;
+            return this;
+        }
     }
 
     static internal class SomeExtensions
