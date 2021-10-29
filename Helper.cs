@@ -1,9 +1,60 @@
 using System.Collections.Immutable;
+using System.Text.RegularExpressions;
 
 namespace zip2
 {
     internal static class Helper
     {
+        static public IEnumerable<string> Parse(
+            this IParser opt, IEnumerable<string> args)
+        {
+            (string[] founds, IEnumerable<string> rtn) =
+                args
+                .SubractStartsWith(opt.IsPrefix,
+                toValues: (seq) => seq.Select(
+                    (it) => opt.ToValues(it))
+                    .SelectMany((seq2) => seq2));
+
+            if (opt.RequireSingleValue()
+            && founds.Length > 1)
+            {
+                throw new TooManyValuesException(
+                    $"Too many value to --{opt.Name()}");
+            }
+
+            var invalidValue = founds
+                .Where((it) => !opt.Parse(it))
+                .FirstOrDefault();
+            if (!string.IsNullOrEmpty(invalidValue))
+            {
+                throw new InvalidValueException(
+                    invalidValue, opt.Name());
+            }
+
+            return rtn;
+        }
+
+        static public Regex ToDosRegex(this string arg)
+        {
+            var regText = new System.Text.StringBuilder("^");
+            regText.Append(arg
+                .Replace(@"\", @"\\")
+                .Replace("^", @"\^")
+                .Replace("$", @"\$")
+                .Replace(".", @"\.")
+                .Replace("?", ".")
+                .Replace("*", ".*")
+                .Replace("(", @"\(")
+                .Replace(")", @"\)")
+                .Replace("[", @"\[")
+                .Replace("]", @"\]")
+                .Replace("{", @"\{")
+                .Replace("}", @"\}")
+                ).Append('$');
+            return new Regex( regText.ToString(),
+                RegexOptions.IgnoreCase);
+        }
+
         static public IEnumerable<string>
         ExpandToCommand
         ( string[] args
@@ -123,5 +174,17 @@ namespace zip2
     {
         static readonly public Func<IEnumerable<T>,IEnumerable<T>>
         NoChange = (seq) => seq;
+    }
+
+    class TooManyValuesException : ArgumentException
+    {
+        public TooManyValuesException(string message)
+            : base(message) { }
+    }
+
+    class InvalidValueException : ArgumentException
+    {
+        public InvalidValueException(string value, string optName)
+            : base($"'{value}' is unknown to --{optName}") { }
     }
 }

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using ICSharpCode.SharpZipLib.Zip;
 
 namespace zip2.list
@@ -76,30 +77,51 @@ namespace zip2.list
             return 0;
         }
 
+        static protected Func<string, bool> NameFilter { get; set; }
+            = (_) => true;
+
         public override bool Parse(IEnumerable<string> args)
         {
-            IEnumerable<string> argsThe = args;
-            foreach (var opt in opts)
+            var qry9 = opts
+                .Aggregate(args, (seq, opt) => opt.Parse(seq))
+                .GroupBy((it) => it.StartsWith('-'))
+                .ToDictionary((grp) => grp.Key, (grp) => grp.ToArray());
+
+            if (qry9.ContainsKey(true))
             {
-                (string[] founds, argsThe) = argsThe
-                .SubractStartsWith(opt.IsPrefix,
-                toValues: (seq) => seq.Select(
-                    (it) => opt.ToValues(it))
-                    .SelectMany((seq2) => seq2));
-
-                if (opt.RequireSingleValue()
-                && founds.Length>1)
-                {
-                    Console.WriteLine(
-                        $"Too many value to --{opt.Name()}");
-                    return false;
-                }
-
-                if (!founds.All((it) => opt.Parse(it)))
-                {
-                    return false;
-                }
+                throw new InvalidValueException(
+                    qry9[true][0], nameof(list));
             }
+
+            string[] otherArgs = qry9.ContainsKey(false)
+                ? qry9[false] : Array.Empty<string>();
+            if (otherArgs.Length>0)
+            {
+                var regexs = otherArgs
+                    .Select((it) => it.ToDosRegex())
+                    .ToArray();
+
+                otherArgs = otherArgs
+                    .Select((it) => it.Replace("\\", "/"))
+                    .ToArray();
+
+                Func<string, bool> filterToFullPath =
+                    (arg) => otherArgs.Any((it)
+                    => it.Equals(arg));
+
+                Func<string, bool> filterToFilename =
+                    (arg) =>
+                    {
+                        var filename = Path.GetFileName(arg);
+                        return regexs.Any((it)
+                            => it.Match(filename).Success);
+                    };
+
+                NameFilter = (arg)
+                    => filterToFullPath(arg)
+                    || filterToFilename(arg);
+            }
+
             return true;
         }
 
@@ -147,7 +169,6 @@ namespace zip2.list
                         return obj.SetValue((arg) =>
                         string.Format("{0,9} ", arg));
                     default:
-                        Console.WriteLine($"'{val}' is unknown to '--{obj.Name()}'");
                         return false;
                 }
             });
@@ -192,7 +213,6 @@ namespace zip2.list
                         return obj.SetValue((date) =>
                         date.ToString("yy-MM-dd "));
                     default:
-                        Console.WriteLine($"'{val}' is unknown to '--{obj.Name()}'");
                         return false;
                 }
             });
@@ -201,6 +221,7 @@ namespace zip2.list
         {
             return (new ZipFile(File.OpenRead(filename)))
             .GetZipEntries()
+            .Where((it) => NameFilter.Invoke(it.Name))
             .Invoke((seq) => Sort.Invoke(seq))
             .Invoke((seq) => ReverseEntry(seq))
             .Select((itm) =>
@@ -227,6 +248,7 @@ namespace zip2.list
                             return opt.SetValue((filename) =>
                             (new ZipFile( File.OpenRead(filename)))
                             .GetZipEntries()
+                            .Where((it) => NameFilter.Invoke(it.Name))
                             .GroupBy((item) => Path.GetExtension(item.Name))
                             .Select((grp) => grp.Aggregate(
                                 new ZipEntrySum(
@@ -251,27 +273,26 @@ namespace zip2.list
                             return opt.SetValue((filename) =>
                             (new ZipFile( File.OpenRead(filename)))
                             .GetZipEntries()
-                                .GroupBy((item) => item.Name.GetRootDirectory())
-                                .Select((grp) => grp.Aggregate(
-                                    new ZipEntrySum(
-                                        string.IsNullOrEmpty(grp.Key)
-                                        ? "*NoExt*" : grp.Key),
-                                        (ZipEntrySum acc, ZipEntry itm) =>
-                                        acc.AddWith(itm)))
-                                .Invoke((seq) => SortSum!.Invoke(seq))
-                                .Invoke((seq) => Reverse!.Invoke(seq))
-                                .Select((grp) =>
-                                {
-                                    Console.Write(
-                                        Opt.Total.ItemText(grp.ToConsoleText()));
-                                    return grp;
-                                })
+                            .Where((it) => NameFilter.Invoke(it.Name))
+                            .GroupBy((item) => item.Name.GetRootDirectory())
+                            .Select((grp) => grp.Aggregate(
+                                new ZipEntrySum(
+                                    string.IsNullOrEmpty(grp.Key)
+                                    ? "*NoExt*" : grp.Key),
+                                    (ZipEntrySum acc, ZipEntry itm) =>
+                                    acc.AddWith(itm)))
+                            .Invoke((seq) => SortSum!.Invoke(seq))
+                            .Invoke((seq) => Reverse!.Invoke(seq))
+                            .Select((grp) =>
+                            {
+                                Console.Write(
+                                    Opt.Total.ItemText(grp.ToConsoleText()));
+                                return grp;
+                            })
                             .Aggregate(new ZipEntrySum(
                                 Path.GetFileName(filename)),
                                 (acc, itm) => acc.AddWith(itm)));
                         default:
-                            Console.WriteLine(
-                                $"'{val}' is unknown to '--{opt.Name()}'");
                             return false;
                     }
                 });
@@ -367,8 +388,6 @@ namespace zip2.list
                                 Feature.RatioText(it.Size,it.CompressedSize));
                             return true;
                         default:
-                            Console.WriteLine(
-                                $"'{val}' is unknown to '--{opt.Name()}'");
                             return false;
                     }
                 });
@@ -424,8 +443,6 @@ namespace zip2.list
                     Show.CompressedText = (arg) => arg;
                     return true;
                 default:
-                    Console.WriteLine(
-                        $"'{value}' is unknown to '--{obj.Name()}'");
                     return false;
             }
         })
@@ -475,8 +492,6 @@ namespace zip2.list
                         Hide.CountText = (_) => string.Empty;
                         return true;
                     default:
-                        Console.WriteLine(
-                            $"'{value}' is unknown to '--{obj.Name()}'");
                         return false;
                 }
             })
@@ -515,8 +530,6 @@ namespace zip2.list
                         Total.GrandText = (_) => string.Empty;
                         return true;
                     default:
-                        Console.WriteLine(
-                            $"'{value}' is unknown to '--{obj.Name()}'");
                         return false;
                 }
             })

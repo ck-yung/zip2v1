@@ -16,6 +16,11 @@ namespace zip2
             {
                 return RunMain(argsSecondPhase);
             }
+            catch (ArgumentException aex)
+            {
+                Console.WriteLine(aex.Message);
+                return -1;
+            }
             catch (Exception ee)
             {
                 Console.WriteLine();
