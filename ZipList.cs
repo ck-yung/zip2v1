@@ -256,16 +256,25 @@ namespace zip2.list
         static ParameterFunction<
         IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>
         Sort = new ParameterFunctionSetter<
-        IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>(
-            option:"sort", help:"name|ext|size|date|last|count|ratio",
+        IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>( option:"sort",
+            help:"path|name|ext|size|date|last|count|ratio|name,size|ext,size"
+            +"|name,date|ext,date",
             defaultValue: Seq<ZipEntry>.NoChange,
                 parse: (val,opt) =>
                 {
                     switch (val)
                     {
-                        case "name":
+                        case "path":
                             opt.SetValue(
                                 (seq) => seq.OrderBy((it) => it.Name));
+                            SortSum =
+                                (seq) => seq.OrderBy((it) => it.Name);
+                            return true;
+                        case "name":
+                            opt.SetValue(
+                                (seq) => seq
+                                .OrderBy((it) => Path.GetFileName(it.Name))
+                                .ThenBy((it) => it.Name));
                             SortSum =
                                 (seq) => seq.OrderBy((it) => it.Name);
                             return true;
@@ -274,6 +283,34 @@ namespace zip2.list
                                 (seq) => seq
                                 .OrderBy((it) => Path.GetExtension(it.Name))
                                 .ThenBy((it) => it.Name));
+                            return true;
+                        case "name,size":
+                            opt.SetValue(
+                                (seq) => seq
+                                .OrderBy((it) => Path.GetFileName(it.Name))
+                                .ThenBy((it) => it.Size));
+                            SortSum =
+                                (seq) => seq.OrderBy((it) => it.Name);
+                            return true;
+                        case "ext,size":
+                            opt.SetValue(
+                                (seq) => seq
+                                .OrderBy((it) => Path.GetExtension(it.Name))
+                                .ThenBy((it) => it.Size));
+                            return true;
+                        case "name,date":
+                            opt.SetValue(
+                                (seq) => seq
+                                .OrderBy((it) => Path.GetFileName(it.Name))
+                                .ThenBy((it) => it.DateTime));
+                            SortSum =
+                                (seq) => seq.OrderBy((it) => it.Name);
+                            return true;
+                        case "ext,date":
+                            opt.SetValue(
+                                (seq) => seq
+                                .OrderBy((it) => Path.GetExtension(it.Name))
+                                .ThenBy((it) => it.DateTime));
                             return true;
                         case "size":
                             opt.SetValue(
