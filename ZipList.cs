@@ -7,13 +7,41 @@ namespace zip2.list
     {
         internal static string ToConsoleText(this ZipEntry arg)
         {
-            StringBuilder tmp = new(RatioText(
-                arg.Size,arg.CompressedSize));
-            tmp.Append(SizeText(arg.Size));
+            StringBuilder tmp = new(Opt.Hide.RatioText(
+                Feature.RatioText(arg.Size,arg.CompressedSize)));
+            tmp.Append(Opt.Hide.SizeText(
+                Feature.SizeText(arg.Size)));
             tmp.Append(CompressedText(arg.CompressedSize));
             tmp.Append(CrcText(arg.Crc));
-            tmp.Append(DateText(arg.DateTime));
-            tmp.Append(CryptedMask(arg.IsCrypted));
+            tmp.Append(Opt.Hide.DateText(
+                Feature.DateText(arg.DateTime)));
+            tmp.Append(Opt.Hide.CryptedMarkText(
+                CryptedMask(arg.IsCrypted)));
+            tmp.Append(arg.Name);
+            return tmp.ToString();
+        }
+
+        static internal string ToConsoleText(this ZipEntrySum arg)
+        {
+            StringBuilder tmp = new(Opt.Hide.RatioText(
+                Feature.RatioText(arg.Size, arg.CompressedSize)));
+
+            tmp.Append(Feature.CompressedText(
+                arg.CompressedSize));
+
+            tmp.Append(Opt.Hide.SizeText(Feature.SizeText(arg.Size)));
+
+            tmp.Append(Feature.CrcTotalText());
+
+            var dateText = Opt.Hide.DateText(Feature.DateText(arg.DateTime));
+            if (!string.IsNullOrEmpty(dateText))
+            {
+                dateText = $"{dateText}- {Opt.Hide.DateText(Feature.DateText(arg.DateTimeLast))}";
+                tmp.Append(dateText);
+            }
+
+            tmp.Append(Opt.Hide.CountText(Feature.CountText(arg.Count)));
+            tmp.Append(Opt.Hide.CryptedMarkText(Feature.CryptedMask(arg.AnyCrypted)));
             tmp.Append(arg.Name);
             return tmp.ToString();
         }
@@ -38,18 +66,18 @@ namespace zip2.list
 
         public static string CompressedText(long compressed)
         {
-            return list.Command.Opt.Show
+            return Opt.Show
                 .CompressedText($"{compressed,8} ");
         }
 
         public static string CrcText(long crc)
         {
-            return list.Command.Opt.Show.Crc(crc);
+            return Opt.Show.Crc(crc);
         }
 
         public static string CrcTotalText()
         {
-            return list.Command.Opt.Show.CrcTotal();
+            return Opt.Show.CrcTotal();
         }
 
         public static string CryptedMask(bool crypted)
@@ -80,7 +108,7 @@ namespace zip2.list
                 Console.WriteLine(itm.ToConsoleText());
                 sum.AddWith(itm);
             }
-            Console.WriteLine(sum.ToString());
+            Console.WriteLine(sum.ToConsoleText());
             return 0;
         }
 
@@ -96,6 +124,18 @@ namespace zip2.list
             {
                 return false;
             }
+
+            (string[] founds2, var others2) = others
+            .SubractStartsWith(Opt.Hide.IsPrefix,
+            toValues: (seq) => seq.Select(
+                (it) => Opt.Show.ToValues(it))
+                .SelectMany((seq2) => seq2));
+
+            if (!founds2.All((it) => Opt.Hide.Parse(it)))
+            {
+                return false;
+            }
+
             return true;
         }
 
@@ -111,37 +151,92 @@ namespace zip2.list
             return 0;
         }
 
-        sealed internal class Opt: ParameterOptionSetter<bool>
-        {
-            static public readonly Opt Show = new Opt();
-            public Func<long, string> Crc { get; private set; }
-            = (_) => string.Empty;
-            public Func<string> CrcTotal { get; internal set; }
-            = () => string.Empty;
-            public Func<string,string> CompressedText { get; private set;}
-            = (_) => string.Empty;
+        static IParser[] opts = new IParser[] {
+            Opt.Show,
+            Opt.Hide,
+            };
+    }
 
-            private Opt() : base("show", "crc,compress", false,
+    sealed internal class Opt: ParameterOptionSetter<bool>
+    {
+        static public readonly Opt Show = new Opt();
+        public Func<long, string> Crc { get; private set; }
+        = (_) => string.Empty;
+        public Func<string> CrcTotal { get; internal set; }
+        = () => string.Empty;
+        public Func<string,string> CompressedText { get; private set;}
+        = (_) => string.Empty;
+
+        private Opt() : base("show", "crc,compress", false,
+            parse: (value, obj) => {
+                switch (value)
+                {
+                    case "crc":
+                        Show.Crc = (arg) => arg.ToString("X08") + " ";
+                        // ................... 123456789
+                        Show.CrcTotal = () => "         ";
+                        return true;
+                    case "compress":
+                        Show.CompressedText = (arg) => arg;
+                        return true;
+                    default:
+                        Console.WriteLine(
+                            $"'{value}' is unknown to '--{obj.Name()}='");
+                        return false;
+                }
+            })
+        {
+        }
+
+        override public IEnumerable<string> ToValues(string arg)
+        {
+            foreach (var token in arg.Substring(Name().Length + 3).Split(','))
+            {
+                yield return token;
+            }
+        }
+
+        internal class HideClass: ParameterOptionSetter<bool>
+        {
+            public Func<string,string> RatioText { get; private set;}
+            = (it) => it;
+            public Func<string,string> SizeText { get; private set;}
+            = (it) => it;
+            public Func<string,string> DateText { get; private set;}
+            = (it) => it;
+            public Func<string,string> CryptedMarkText { get; private set;}
+            = (it) => it;
+            public Func<string,string> CountText { get; private set;}
+            = (it) => it;
+
+            internal HideClass() : base("hide",
+            "ratio,size,date,crypted,count", false,
                 parse: (value, obj) => {
                     switch (value)
                     {
-                        case "crc":
-                            Show.Crc = (arg) => arg.ToString("X08") + " ";
-                            // ................... 123456789
-                            Show.CrcTotal = () => "         ";
+                        case "ratio":
+                            Hide.RatioText = (_) => string.Empty;
                             return true;
-                        case "compress":
-                            Show.CompressedText = (arg) => arg;
+                        case "size":
+                            Hide.SizeText = (_) => string.Empty;
+                            return true;
+                        case "date":
+                            Hide.DateText = (_) => string.Empty;
+                            return true;
+                        case "crypted":
+                            Hide.CryptedMarkText = (_) => string.Empty;
+                            return true;
+                        case "count":
+                            Hide.CountText = (_) => string.Empty;
                             return true;
                         default:
                             Console.WriteLine(
-                                $"'{value}' is unknown to '--{obj.Name}='");
+                                $"'{value}' is unknown to '--{obj.Name()}='");
                             return false;
                     }
                 })
             {
             }
-
             override public IEnumerable<string> ToValues(string arg)
             {
                 foreach (var token in arg.Substring(Name().Length + 3).Split(','))
@@ -150,8 +245,7 @@ namespace zip2.list
                 }
             }
         }
-        static IParser[] opts = new IParser[] {
-            Opt.Show,
-            };
+
+        static internal HideClass Hide = new();
     }
 }

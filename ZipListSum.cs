@@ -33,30 +33,5 @@ namespace zip2
             if (arg.IsCrypted) AnyCrypted = true;
             return this;
         }
-
-        public override string ToString()
-        {
-            StringBuilder tmp = new(list.Feature.RatioText(
-                Size,CompressedSize));
-
-            tmp.Append(list.Feature.CompressedText(
-                CompressedSize));
-
-            tmp.Append(list.Feature.SizeText(Size));
-
-            tmp.Append(list.Feature.CrcTotalText());
-
-            var dateText = list.Feature.DateText(DateTime);
-            if (!string.IsNullOrEmpty(dateText))
-            {
-                dateText = $"{dateText}- {list.Feature.DateText(DateTimeLast)}";
-            }
-            tmp.Append(dateText);
-
-            tmp.Append(list.Feature.CountText(Count));
-            tmp.Append(list.Feature.CryptedMask(AnyCrypted));
-            tmp.Append(Name);
-            return tmp.ToString();
-        }
     }
 }
