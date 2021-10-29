@@ -3,7 +3,7 @@ using ICSharpCode.SharpZipLib.Zip;
 
 namespace zip2.list
 {
-    public static class Feature
+    internal static class Feature
     {
         internal static string ToConsoleText(this ZipEntry arg)
         {
@@ -18,7 +18,8 @@ namespace zip2.list
                 Command.DateFormat.Invoke(arg.DateTime)));
             tmp.Append(Opt.Hide.CryptedMarkText(arg.IsCrypted));
             tmp.Append(arg.Name);
-            return tmp.ToString();
+            tmp.Append(Environment.NewLine);
+            return Opt.Total.ItemText(tmp.ToString());
         }
 
         static internal string ToConsoleText(this ZipEntrySum arg)
@@ -47,10 +48,11 @@ namespace zip2.list
             tmp.Append(Opt.Hide.CountText(arg.Count));
             tmp.Append(Opt.Hide.CryptedMarkText(arg.AnyCrypted));
             tmp.Append(arg.Name);
-            return tmp.ToString();
+            tmp.Append(Environment.NewLine);
+            return Opt.Total.GrandText(tmp.ToString());
         }
 
-        public static string RatioText(
+        internal static string RatioText(
             long original, long compressed)
         {
             if (original < 1) return " 0 ";
@@ -73,10 +75,10 @@ namespace zip2.list
             var zipThe = new ZipFile(fs);
             foreach (ZipEntry itm in zipThe)
             {
-                Console.WriteLine(itm.ToConsoleText());
+                Console.Write(itm.ToConsoleText());
                 sum.AddWith(itm);
             }
-            Console.WriteLine(sum.ToConsoleText());
+            Console.Write(sum.ToConsoleText());
             return 0;
         }
 
@@ -177,6 +179,7 @@ namespace zip2.list
             Opt.Hide,
             (IParser) SizeFormat,
             (IParser) DateFormat,
+            Opt.Total,
             };
     }
 
@@ -272,6 +275,45 @@ namespace zip2.list
         }
 
         static internal HideClass Hide = new();
-    }
 
+        internal class TotalClass: ParameterOptionSetter<bool>
+        {
+            public Func<string,string> ItemText { get; private set;}
+            = (it) => it;
+            public Func<string,string> GrandText { get; private set;}
+            = (it) => it;
+
+            internal TotalClass() : base("total", "only|off",
+            defaultValue: false,
+            parse: (value, obj) => {
+                switch (value)
+                {
+                    case "only":
+                        Total.ItemText = (_) => string.Empty;
+                        Total.GrandText = (it) => it;
+                        return true;
+                    case "off":
+                        Total.ItemText = (it) => it;
+                        Total.GrandText = (_) => string.Empty;
+                        return true;
+                    default:
+                        Console.WriteLine(
+                            $"'{value}' is unknown to '--{obj.Name()}'");
+                        return false;
+                }
+            })
+            {
+            }
+
+            override public IEnumerable<string> ToValues(string arg)
+            {
+                foreach (var token in arg.Substring(Name().Length + 3).Split(','))
+                {
+                    yield return token;
+                }
+            }
+        }
+
+        static internal TotalClass Total = new();
+    }
 }
