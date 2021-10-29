@@ -19,7 +19,14 @@ namespace zip2
             catch (Exception ee)
             {
                 Console.WriteLine();
-                Console.WriteLine(ee);
+                var chkEnvr = Environment.GetEnvironmentVariable(
+                    "zip2") ?? string.Empty;
+                if (chkEnvr.Contains(":debug:"))
+                {
+                    Console.WriteLine(ee);
+                    return 0;
+                }
+                Console.WriteLine(ee.Message);
                 return -1;
             }
         }
