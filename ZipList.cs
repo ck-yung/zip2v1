@@ -38,17 +38,18 @@ namespace zip2.list
 
         public static string CompressedText(long compressed)
         {
-            return $"{compressed,8} ";
+            return list.Command.Opt.Show
+                .CompressedText($"{compressed,8} ");
         }
 
         public static string CrcText(long crc)
         {
-            return crc.ToString("X08")+ " ";
+            return list.Command.Opt.Show.Crc(crc);
         }
 
         public static string CrcTotalText()
-        { // ...... 123456789
-            return "         ";
+        {
+            return list.Command.Opt.Show.CrcTotal();
         }
 
         public static string CryptedMask(bool crypted)
@@ -85,18 +86,72 @@ namespace zip2.list
 
         public override bool Parse(IEnumerable<string> args)
         {
-            Console.WriteLine("TODO: list.Parse()");
-            foreach (var arg in args)
+            (string[] founds, var others) = args
+            .SubractStartsWith(Opt.Show.IsPrefix,
+            toValues: (seq) => seq.Select(
+                (it) => Opt.Show.ToValues(it))
+                .SelectMany((seq2) => seq2));
+
+            if (!founds.All((it) => Opt.Show.Parse(it)))
             {
-                Console.WriteLine($"\t{arg}");
+                return false;
             }
             return true;
         }
 
         public override int SayHelp()
         {
-            Console.WriteLine("TODO: list.SayHelp()");
+            Console.WriteLine("Syntax: zip2 --list --file=ZIPFILE [OPT ..]");
+            Console.WriteLine("OPT:");
+            foreach (var opt in opts)
+            {
+                var prefix = $"--{opt.Name()}=";
+                Console.WriteLine($"  {prefix,20}{opt.OnlineHelp()}");
+            }
             return 0;
         }
+
+        sealed internal class Opt: ParameterOptionSetter<bool>
+        {
+            static public readonly Opt Show = new Opt();
+            public Func<long, string> Crc { get; private set; }
+            = (_) => string.Empty;
+            public Func<string> CrcTotal { get; internal set; }
+            = () => string.Empty;
+            public Func<string,string> CompressedText { get; private set;}
+            = (_) => string.Empty;
+
+            private Opt() : base("show", "crc,compress", false,
+                parse: (value, obj) => {
+                    switch (value)
+                    {
+                        case "crc":
+                            Show.Crc = (arg) => arg.ToString("X08") + " ";
+                            // ................... 123456789
+                            Show.CrcTotal = () => "         ";
+                            return true;
+                        case "compress":
+                            Show.CompressedText = (arg) => arg;
+                            return true;
+                        default:
+                            Console.WriteLine(
+                                $"'{value}' is unknown to '--{obj.Name}='");
+                            return false;
+                    }
+                })
+            {
+            }
+
+            override public IEnumerable<string> ToValues(string arg)
+            {
+                foreach (var token in arg.Substring(Name().Length + 3).Split(','))
+                {
+                    yield return token;
+                }
+            }
+        }
+        static IParser[] opts = new IParser[] {
+            Opt.Show,
+            };
     }
 }

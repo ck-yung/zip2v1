@@ -89,5 +89,25 @@ namespace zip2
 
             return (startingWith,others);
         }
+
+        static public (string[], IEnumerable<string>)
+        SubractStartsWith(this IEnumerable<string> args,
+        Func<string,bool> filter,
+        Func<IEnumerable<string>,IEnumerable<string>> toValues)
+        {
+            var qryThis = args
+            .GroupBy((it) => filter(it))
+            .ToImmutableDictionary(
+                (grp) => grp.Key, (grp) => grp.AsEnumerable());
+
+            string[] startingWith = (qryThis.ContainsKey(true))
+                ? toValues(qryThis[true]).Distinct().ToArray()
+                : Array.Empty<string>();
+
+            var others = (qryThis.ContainsKey(false))
+                ? qryThis[false] : Array.Empty<string>();
+
+            return (startingWith,others);
+        }
     }
 }
