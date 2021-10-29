@@ -15,9 +15,8 @@ namespace zip2.list
                 Command.SizeFormat.Invoke(arg.CompressedSize)));
             tmp.Append(Opt.Show.Crc(arg.Crc));
             tmp.Append(Opt.Hide.DateText(
-                Feature.DateText(arg.DateTime)));
-            tmp.Append(Opt.Hide.CryptedMarkText(
-                CryptedMask(arg.IsCrypted)));
+                Command.DateFormat.Invoke(arg.DateTime)));
+            tmp.Append(Opt.Hide.CryptedMarkText(arg.IsCrypted));
             tmp.Append(arg.Name);
             return tmp.ToString();
         }
@@ -35,15 +34,18 @@ namespace zip2.list
 
             tmp.Append(Opt.Show.CrcTotal());
 
-            var dateText = Opt.Hide.DateText(Feature.DateText(arg.DateTime));
+            var dateText = Opt.Hide.DateText(
+                Command.DateFormat.Invoke(arg.DateTime));
             if (!string.IsNullOrEmpty(dateText))
             {
-                dateText = $"{dateText}- {Opt.Hide.DateText(Feature.DateText(arg.DateTimeLast))}";
                 tmp.Append(dateText);
+                tmp.Append("- ");
+                tmp.Append(Opt.Hide.DateText(
+                    Command.DateFormat.Invoke(arg.DateTimeLast)));
             }
 
-            tmp.Append(Opt.Hide.CountText(Feature.CountText(arg.Count)));
-            tmp.Append(Opt.Hide.CryptedMarkText(Feature.CryptedMask(arg.AnyCrypted)));
+            tmp.Append(Opt.Hide.CountText(arg.Count));
+            tmp.Append(Opt.Hide.CryptedMarkText(arg.AnyCrypted));
             tmp.Append(arg.Name);
             return tmp.ToString();
         }
@@ -59,21 +61,6 @@ namespace zip2.list
             if (compressed < 1L) return " 0 ";
             if (compressed > 98L) return "99 ";
             return $"{compressed,2} ";
-        }
-
-        public static string CryptedMask(bool crypted)
-        {
-            return crypted ? "*" : " ";
-        }
-
-        public static string DateText(DateTime datetime)
-        {
-            return datetime.ToString("yyyy-MM-dd HH:mm:ss ");
-        }
-
-        public static string CountText(int count)
-        {
-            return $"{count,4} ";
         }
     }
 
@@ -160,7 +147,27 @@ namespace zip2.list
                         return obj.SetValue((arg) =>
                         string.Format("{0,9} ", arg));
                     default:
-                        Console.WriteLine($"'{val}' is unknown to '{obj.Name()}'");
+                        Console.WriteLine($"'{val}' is unknown to '--{obj.Name()}'");
+                        return false;
+                }
+            });
+
+        static public ParameterFunction<DateTime, string> DateFormat =
+            new ParameterFunctionSetter<DateTime, string>(
+            option: "date-format", "long|short",
+            defaultValue: (date) => date.ToString("yy-MM-dd HH:mm "),
+            parse: (val, obj) =>
+            {
+                switch (val)
+                {
+                    case "long":
+                        return obj.SetValue((date) =>
+                        date.ToString("yyyy-MM-dd HH:mm:ss "));
+                    case "short":
+                        return obj.SetValue((date) =>
+                        date.ToString("yy-MM-dd "));
+                    default:
+                        Console.WriteLine($"'{val}' is unknown to '--{obj.Name()}'");
                         return false;
                 }
             });
@@ -169,6 +176,7 @@ namespace zip2.list
             Opt.Show,
             Opt.Hide,
             (IParser) SizeFormat,
+            (IParser) DateFormat,
             };
     }
 
@@ -196,7 +204,7 @@ namespace zip2.list
                     return true;
                 default:
                     Console.WriteLine(
-                        $"'{value}' is unknown to '--{obj.Name()}='");
+                        $"'{value}' is unknown to '--{obj.Name()}'");
                     return false;
             }
         })
@@ -219,10 +227,10 @@ namespace zip2.list
             = (it) => it;
             public Func<string,string> DateText { get; private set;}
             = (it) => it;
-            public Func<string,string> CryptedMarkText { get; private set;}
-            = (it) => it;
-            public Func<string,string> CountText { get; private set;}
-            = (it) => it;
+            public Func<bool,string> CryptedMarkText { get; private set;}
+            = (it) => it ? "*" : " ";
+            public Func<int,string> CountText { get; private set;}
+            = (it) => $"{it,5} ";
 
             internal HideClass() : base("hide",
             "ratio,size,date,crypted,count",
@@ -247,7 +255,7 @@ namespace zip2.list
                         return true;
                     default:
                         Console.WriteLine(
-                            $"'{value}' is unknown to '--{obj.Name()}='");
+                            $"'{value}' is unknown to '--{obj.Name()}'");
                         return false;
                 }
             })
