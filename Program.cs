@@ -105,7 +105,6 @@ namespace zip2
                 return cmdThe.SayHelp();
             }
 
-            Console.WriteLine($"[dbg] zipFilename='{cmdThe.zipFilename}'");
             if (cmdThe.Parse(args))
             {
                 return cmdThe.Invoke();

@@ -70,14 +70,17 @@ namespace zip2.list
     {
         public override int Invoke()
         {
-            ZipEntrySum sum = new(Path.GetFileName(zipFilename));
             using var fs = File.OpenRead(zipFilename);
             var zipThe = new ZipFile(fs);
-            foreach (ZipEntry itm in zipThe)
+            var sum = zipThe.GetZipEntries()
+            .Select((itm) =>
             {
                 Console.Write(itm.ToConsoleText());
-                sum.AddWith(itm);
-            }
+                return itm;
+            })
+            .Aggregate( new ZipEntrySum(Path.GetFileName(zipFilename)),
+            (acc,itm) => acc.AddWith(itm));
+
             Console.Write(sum.ToConsoleText());
             return 0;
         }

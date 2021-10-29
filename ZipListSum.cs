@@ -34,4 +34,14 @@ namespace zip2
             return this;
         }
     }
+
+    static internal class SomeExtensions
+    {
+        static public IEnumerable<ZipEntry>
+        GetZipEntries( this ZipFile arg)
+        {
+            foreach (ZipEntry item in arg)
+                yield return item;
+        }
+    }
 }
