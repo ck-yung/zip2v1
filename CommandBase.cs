@@ -55,13 +55,15 @@ namespace zip2
         protected R _value;
         readonly protected string OptionName;
         readonly protected string Help;
+        readonly protected bool _requiredSingleValue;
 
         protected ParameterOption(string option, string help,
-            R defaultValue)
+            R defaultValue, bool requiredSingleValue = true)
         {
             OptionName = option;
             Help = help;
             _value = defaultValue;
+            _requiredSingleValue = requiredSingleValue;
         }
         public string Name()
         {
@@ -88,14 +90,20 @@ namespace zip2
         {
             return arg.StartsWith($"--{OptionName}=");
         }
+
+        public bool RequireSingleValue()
+        {
+            return _requiredSingleValue;
+        }
     }
 
     public abstract class ParameterFunction<T, R> :
         ParameterOption<Func<T,R>>
     {
         public ParameterFunction(string option, string help,
-            Func<T,R> defaultValue) :
-            base(option,help,defaultValue)
+            Func<T,R> defaultValue,
+            bool requiredSingleValue = true) :
+            base(option,help,defaultValue, requiredSingleValue)
         { }
         public R Invoke(T arg)
         {
@@ -114,8 +122,9 @@ namespace zip2
         readonly Func<string, ParameterOptionSetter<R>, bool> _parse;
         public ParameterOptionSetter(string option, string help,
             R defaultValue,
-            Func<string, ParameterOptionSetter<R>, bool> parse) :
-            base (option,  help, defaultValue)
+            Func<string, ParameterOptionSetter<R>, bool> parse,
+            bool requiredSingleValue = false) :
+            base (option, help, defaultValue, requiredSingleValue)
         {
             _parse = parse;
         }
@@ -142,8 +151,9 @@ namespace zip2
         readonly Func<string, ParameterFunctionSetter<T, R>, bool> _parse;
         public ParameterFunctionSetter(string option, string help,
             Func<T, R> defaultValue,
-            Func<string, ParameterFunctionSetter<T, R>, bool> parse)
-            : base(option,help,defaultValue)
+            Func<string, ParameterFunctionSetter<T, R>, bool> parse,
+            bool requiredSingleValue = true)
+            : base(option,help,defaultValue, requiredSingleValue)
         {
             _parse = parse;
         }
@@ -152,7 +162,8 @@ namespace zip2
     public class ParameterSwitch: ParameterOption<bool>
     {
         public ParameterSwitch(string option)
-            : base(option,string.Empty,false)
+            : base(option,string.Empty,false,
+            requiredSingleValue:false)
         {
         }
         public override bool IsPrefix(string arg)

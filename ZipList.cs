@@ -95,39 +95,28 @@ namespace zip2.list
 
         public override bool Parse(IEnumerable<string> args)
         {
-            (string[] founds, var others) = args
-            .SubractStartsWith(Opt.Show.IsPrefix,
-            toValues: (seq) => seq.Select(
-                (it) => Opt.Show.ToValues(it))
-                .SelectMany((seq2) => seq2));
-
-            if (!founds.All((it) => Opt.Show.Parse(it)))
+            IEnumerable<string> argsThe = args;
+            foreach (var opt in opts)
             {
-                return false;
+                (string[] founds, argsThe) = argsThe
+                .SubractStartsWith(opt.IsPrefix,
+                toValues: (seq) => seq.Select(
+                    (it) => opt.ToValues(it))
+                    .SelectMany((seq2) => seq2));
+
+                if (opt.RequireSingleValue()
+                && founds.Length>1)
+                {
+                    Console.WriteLine(
+                        $"Too many value to --{opt.Name()}");
+                    return false;
+                }
+
+                if (!founds.All((it) => opt.Parse(it)))
+                {
+                    return false;
+                }
             }
-
-            (string[] founds2, var others2) = others
-            .SubractStartsWith(Opt.Hide.IsPrefix,
-            toValues: (seq) => seq.Select(
-                (it) => Opt.Hide.ToValues(it))
-                .SelectMany((seq2) => seq2));
-
-            if (!founds2.All((it) => Opt.Hide.Parse(it)))
-            {
-                return false;
-            }
-
-            (string[] founds3, var others3) = others
-            .SubractStartsWith(SizeFormat.IsPrefix,
-            toValues: (seq) => seq
-            .Select((it) => SizeFormat.ToValues(it))
-            .SelectMany((it) => it));
-
-            if (!founds3.All((it) => SizeFormat.Parse(it)))
-            {
-                return false;
-            }
-
             return true;
         }
 
@@ -193,24 +182,24 @@ namespace zip2.list
         public Func<string,string> CompressedText { get; private set;}
         = (_) => string.Empty;
 
-        private Opt() : base("show", "crc,compress", false,
-            parse: (value, obj) => {
-                switch (value)
-                {
-                    case "crc":
-                        Show.Crc = (arg) => arg.ToString("X08") + " ";
-                        // ................... 123456789
-                        Show.CrcTotal = () => "         ";
-                        return true;
-                    case "compress":
-                        Show.CompressedText = (arg) => arg;
-                        return true;
-                    default:
-                        Console.WriteLine(
-                            $"'{value}' is unknown to '--{obj.Name()}='");
-                        return false;
-                }
-            })
+        private Opt() : base("show", "crc,compress", defaultValue: false,
+        parse: (value, obj) => {
+            switch (value)
+            {
+                case "crc":
+                    Show.Crc = (arg) => arg.ToString("X08") + " ";
+                    // ................... 123456789
+                    Show.CrcTotal = () => "         ";
+                    return true;
+                case "compress":
+                    Show.CompressedText = (arg) => arg;
+                    return true;
+                default:
+                    Console.WriteLine(
+                        $"'{value}' is unknown to '--{obj.Name()}='");
+                    return false;
+            }
+        })
         {
         }
 
@@ -236,33 +225,35 @@ namespace zip2.list
             = (it) => it;
 
             internal HideClass() : base("hide",
-            "ratio,size,date,crypted,count", false,
-                parse: (value, obj) => {
-                    switch (value)
-                    {
-                        case "ratio":
-                            Hide.RatioText = (_) => string.Empty;
-                            return true;
-                        case "size":
-                            Hide.SizeText = (_) => string.Empty;
-                            return true;
-                        case "date":
-                            Hide.DateText = (_) => string.Empty;
-                            return true;
-                        case "crypted":
-                            Hide.CryptedMarkText = (_) => string.Empty;
-                            return true;
-                        case "count":
-                            Hide.CountText = (_) => string.Empty;
-                            return true;
-                        default:
-                            Console.WriteLine(
-                                $"'{value}' is unknown to '--{obj.Name()}='");
-                            return false;
-                    }
-                })
+            "ratio,size,date,crypted,count",
+            defaultValue: false,
+            parse: (value, obj) => {
+                switch (value)
+                {
+                    case "ratio":
+                        Hide.RatioText = (_) => string.Empty;
+                        return true;
+                    case "size":
+                        Hide.SizeText = (_) => string.Empty;
+                        return true;
+                    case "date":
+                        Hide.DateText = (_) => string.Empty;
+                        return true;
+                    case "crypted":
+                        Hide.CryptedMarkText = (_) => string.Empty;
+                        return true;
+                    case "count":
+                        Hide.CountText = (_) => string.Empty;
+                        return true;
+                    default:
+                        Console.WriteLine(
+                            $"'{value}' is unknown to '--{obj.Name()}='");
+                        return false;
+                }
+            })
             {
             }
+
             override public IEnumerable<string> ToValues(string arg)
             {
                 foreach (var token in arg.Substring(Name().Length + 3).Split(','))
