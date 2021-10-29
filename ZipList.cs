@@ -152,6 +152,12 @@ namespace zip2.list
                 }
             });
 
+        static public ParameterSwitch CountComma =
+            new ParameterSwitch("count-comma", whenSwitch: () =>
+             {
+                 ((IParser)(CountFormat!)).Parse("5");
+             });
+
         static public ParameterFunction<int, string> CountFormat =
             new ParameterFunctionSetter<int, string>(
             option: "count-width", "NUMBER",
@@ -161,6 +167,10 @@ namespace zip2.list
                 if (int.TryParse(val, out int widthThe))
                 {
                     var fmt = $"{{0,{widthThe}}} ";
+                    if (CountComma)
+                    {
+                        fmt = $"{{0,{widthThe}:N0}} ";
+                    }
                     obj.SetValue((it) => String.Format(fmt,it));
                     return true;
                 }
@@ -383,6 +393,7 @@ namespace zip2.list
             Opt.Total,
             (IParser) SizeFormat,
             (IParser) DateFormat,
+            (IParser) CountComma,
             (IParser) CountFormat,
             (IParser) Sort,
             (IParser) SumUp,
