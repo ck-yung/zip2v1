@@ -58,8 +58,8 @@ namespace zip2
         static public IEnumerable<string>
         ExpandToCommand
         ( string[] args
-        , ImmutableDictionary<string,string> fromShortcuts
-        , ImmutableDictionary<string,string> withValueOptions
+        , ImmutableDictionary<string, string> fromShortcuts
+        , ImmutableDictionary<string, string> withValueOptions
         )
         {
             IEnumerable<string> ExpandCombiningShortcut()

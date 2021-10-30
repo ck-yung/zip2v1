@@ -28,6 +28,18 @@ namespace zip2
 
         static public ParameterSwitch Quiet = new ParameterSwitch("quiet");
 
+        static public ParameterOption<string> FilesFrom =
+            new ParameterOptionSetter<string>(
+                "files-from",
+                help: "filename of file list",
+                defaultValue: string.Empty,
+                parse: (val,opt) =>
+                {
+                    opt.SetValue(val);
+                    return true;
+                },
+                requiredSingleValue: true);
+
         protected int SayHelp
             ( string name, IParser[] opts
             , string fileHint = "FILE"

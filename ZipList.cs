@@ -138,11 +138,10 @@ namespace zip2.list
                 }
                 Console.WriteLine($"  {prefix,20}{opt.OnlineHelp()}");
             }
-
             return 0;
         }
 
-        static public ParameterFunction<long, string> SizeFormat =
+        static internal ParameterFunction<long, string> SizeFormat =
             new ParameterFunctionSetter<long, string>(
             option: "size-format", "normal|comma",
             defaultValue: (size) =>
@@ -173,13 +172,13 @@ namespace zip2.list
                 }
             });
 
-        static public ParameterSwitch CountComma =
+        static internal ParameterSwitch CountComma =
             new ParameterSwitch("count-comma", whenSwitch: () =>
              {
                  ((IParser)(CountFormat!)).Parse("5");
              });
 
-        static public ParameterFunction<int, string> CountFormat =
+        static internal ParameterFunction<int, string> CountFormat =
             new ParameterFunctionSetter<int, string>(
             option: "count-width", "NUMBER",
             defaultValue: (count) => $"{count,4} ",
@@ -198,7 +197,7 @@ namespace zip2.list
                 return false;
             });
 
-        static public ParameterFunction<DateTime, string> DateFormat =
+        static internal ParameterFunction<DateTime, string> DateFormat =
             new ParameterFunctionSetter<DateTime, string>(
             option: "date-format", "long|short",
             defaultValue: (date) => date.ToString("yy-MM-dd HH:mm "),
@@ -217,7 +216,7 @@ namespace zip2.list
                 }
             });
 
-        static ZipEntrySum sumDefaultInvoke(string filename)
+        static private ZipEntrySum sumDefaultInvoke(string filename)
         {
             return (new ZipFile(File.OpenRead(filename)))
             .GetZipEntries()
@@ -234,7 +233,7 @@ namespace zip2.list
             (acc,itm) => acc.AddWith(itm));
         }
 
-        static ParameterFunction<string,ZipEntrySum> SumUp =
+        static private ParameterFunction<string,ZipEntrySum> SumUp =
             new ParameterFunctionSetter<string,ZipEntrySum>(
                 option:"sum", help:"ext|dir",
                 defaultValue: sumDefaultInvoke,
@@ -297,10 +296,11 @@ namespace zip2.list
                     }
                 });
 
-        static Func<IEnumerable<ZipEntrySum>,IEnumerable<ZipEntrySum>>
+        static private
+            Func<IEnumerable<ZipEntrySum>,IEnumerable<ZipEntrySum>>
             SortSum = Seq<ZipEntrySum>.NoChange;
 
-        static ParameterFunction<
+        static private ParameterFunction<
         IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>
         Sort = new ParameterFunctionSetter<
         IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>( option:"sort",
@@ -406,7 +406,7 @@ namespace zip2.list
                 ReverseEntry = (seq) => seq.Reverse();
             });
 
-        static IParser[] opts = new IParser[] {
+        static private IParser[] opts = new IParser[] {
             Opt.Show,
             Opt.Hide,
             Opt.Total,
@@ -420,7 +420,7 @@ namespace zip2.list
             };
     }
 
-    sealed internal class Opt: ParameterOptionSetter<bool>
+    sealed class Opt: ParameterOptionSetter<bool>
     {
         static public readonly Opt Show = new Opt();
         public Func<long, string> Crc { get; set; }

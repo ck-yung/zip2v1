@@ -38,12 +38,15 @@ namespace zip2
 
         readonly static string ListCommandText = "--list";
         readonly static string CreateCommandText = "--create";
+        readonly static string RestoreCommandText = "--restore";
 
         readonly static ImmutableDictionary<string,string>
         CommandShortcuts =
         new Dictionary<string, string>() {
             ["-l"] = ListCommandText,
             ["-c"] = CreateCommandText,
+            ["-r"] = RestoreCommandText,
+            ["-q"] = "--quiet",
         }.ToImmutableDictionary();
 
         static int SayCommanHelp()
@@ -54,11 +57,12 @@ namespace zip2
             Console.WriteLine("On-line help:");
             foreach  (var shortName in CommandShortcuts.Keys)
             {
+                Console.Write("Syntax: zip2");
                 Console.WriteLine(
-                    $"Syntax: zip2 {CommandShortcuts[shortName]} --help");
+                    $" {CommandShortcuts[shortName]} --help");
             }
             Console.WriteLine();
-            Console.WriteLine("Run command:");
+            Console.WriteLine("Shortcut command:");
             foreach  (var shortName in CommandShortcuts.Keys)
             {
                 Console.WriteLine(
@@ -80,6 +84,7 @@ namespace zip2
                 mainArgs, CommandShortcuts,
                 new Dictionary<string, string>(){
                     ["-f"] = "--file=",
+                    ["-T"] = "--files-from=",
                 }.ToImmutableDictionary()
             );
 
@@ -87,6 +92,7 @@ namespace zip2
             string,Func<CommandBase>>(){
                 [ListCommandText] = () => new list.Command(),
                 [CreateCommandText] = () => new create.Command(),
+                [RestoreCommandText] = () => new restore.Command(),
             };
 
             var (commands, argsSecondPhase) = Helper.SubractAny(
