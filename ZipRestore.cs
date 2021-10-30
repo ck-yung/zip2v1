@@ -12,8 +12,7 @@ namespace zip2.restore
         {
             Console.WriteLine($"[dbg] file='{zipFilename}'");
             Console.WriteLine($"[dbg] quiet:'{(Quiet?"Yes":"No")}'");
-            string newDir = NewDir;
-            Console.WriteLine($"[dbg] newDir='{newDir}'");
+            Console.WriteLine($"[dbg] newDir='{NewDir}'");
 
             var a2 = "Good";
             var a3 = NameFilter(a2);
@@ -25,82 +24,32 @@ namespace zip2.restore
 
         public override int SayHelp()
         {
-            Console.Write("Syntax: zip2");
-            Console.WriteLine($" --{nameof(restore)} --file=ZIPFILE [OPT ..]");
-            Console.WriteLine("OPT:");
-            foreach (var opt in opts)
-            {
-                var prefix = $"--{opt.Name()}=";
-                if (opt is ISwitch || opt is ParameterSwitch)
-                {
-                    prefix = $"--{opt.Name()} ";
-                }
-                Console.WriteLine($"  {prefix,20}{opt.OnlineHelp()}");
-            }
-            return 0;
+            return base.SayHelp(nameof(restore), opts);
         }
 
         public override bool Parse(
             IEnumerable<string> args)
         {
-            foreach (var arg in args)
-            {
-                Console.WriteLine($"\t'{arg}'");
-            }
-            var qry9 = opts
-                .Aggregate(args, (seq, opt) => opt.Parse(seq))
-                .GroupBy((it) => it.StartsWith('-'))
-                .ToDictionary((grp) => grp.Key, (grp) => grp.ToArray());
+            var (optUnknown, otherArgs) = opts.ParseFrom(args);
 
-            if (qry9.ContainsKey(true))
+            if (optUnknown.Length > 0)
             {
                 throw new InvalidValueException(
-                    qry9[true][0], nameof(list));
+                    optUnknown[0], nameof(list));
             }
 
-            string[] otherArgs = qry9.ContainsKey(false)
-                ? qry9[false] : Array.Empty<string>();
             if (otherArgs.Length > 0)
             {
-                var regexs = otherArgs
-                    .Select((it) => it.ToDosRegex())
-                    .ToArray();
-
-                otherArgs = otherArgs
-                    .Select((it) => it.Replace("\\", "/"))
-                    .ToArray();
-
-                Func<string, bool> filterToFullPath =
-                    (arg) => otherArgs.Any((it)
-                    => it.Equals(arg));
-
-                Func<string, bool> filterToFilename =
-                    (arg) =>
-                    {
-                        var filename = Path.GetFileName(arg);
-                        return regexs.Any((it)
-                            => it.Match(filename).Success);
-                    };
-
-                NameFilter = (arg)
-                    => filterToFullPath(arg)
-                    || filterToFilename(arg);
+                NameFilter = ToNameFilterFunc(otherArgs);
             }
-            Console.WriteLine("[todo] Restore.Parse()");
+
             return true;
         }
 
-        static public ParameterOption<string> NewDir =
-            new ParameterOptionSetter<string>(
-                "new-dir",
-                help: string.Empty,
-                defaultValue: string.Empty,
-                parse: (val, opt) =>
-                {
-                    opt.SetValue(val);
-                    return true;
-                },
-                requiredSingleValue: true);
+        static public ParameterOptionString NewDir =
+            new ParameterOptionString(
+                "new-dir", help: "NEW_OUTPUT_DIR",
+                defaultValue: string.Empty);
 
         static IParser[] opts =
         {

@@ -28,33 +28,34 @@ namespace zip2
 
         static public ParameterSwitch Quiet = new ParameterSwitch("quiet");
 
-        static public ParameterOption<string> FilesFrom =
-            new ParameterOptionSetter<string>(
-                "files-from",
-                help: "filename of file list",
-                defaultValue: string.Empty,
-                parse: (val,opt) =>
-                {
-                    opt.SetValue(val);
-                    return true;
-                },
-                requiredSingleValue: true);
+        static public ParameterOptionString FilesFrom =
+            new ParameterOptionString(
+                "files-from", "FILENAME_OF_FILE_LIST",
+                defaultValue: string.Empty);
 
-        protected int SayHelp
+        public int SayHelp
             ( string name, IParser[] opts
-            , string fileHint = "FILE"
+            , string zipFileHint = "ZIPFILE"
             )
         {
-            Console.WriteLine(
-                $"Syntax: zip2 {name} --file=ZIPFILE [OPT ..] [{fileHint} ..]");
+            Console.Write(
+                $"Syntax: zip2 --{name} --file={zipFileHint}");
+            Console.WriteLine(" [OPT ..] [FILE ..]");
+            Console.Write(
+                $"Syntax: zip2 -{name[0]}f {zipFileHint}");
+            Console.WriteLine(" [OPT ..] [FILE ..]");
             Console.WriteLine("OPT:");
             foreach (var opt in opts)
             {
-                var prefix = $"--{opt.Name()}";
+                var prefix = $"--{opt.Name()}=";
+                if (opt is ISwitch || opt is ParameterSwitch)
+                {
+                    prefix = $"--{opt.Name()} ";
+                }
                 Console.Write($"  {prefix,19}");
                 if (!string.IsNullOrEmpty(opt.OnlineHelp()))
                 {
-                    Console.Write($"={opt.OnlineHelp()}");
+                    Console.Write(opt.OnlineHelp());
                 }
                 Console.WriteLine();
             }
@@ -252,6 +253,63 @@ namespace zip2
         public void WhenSwitch()
         {
             _whenSwitch();
+        }
+    }
+
+    public class ParameterOptionString : IParser
+    {
+        protected string _value;
+        readonly protected string OptionName;
+        readonly protected string Help;
+
+        public ParameterOptionString(string option,
+            string help, string defaultValue)
+        {
+            OptionName = option;
+            Help = help;
+            _value = defaultValue;
+        }
+
+        public string Name()
+        {
+            return OptionName;
+        }
+
+        public string OnlineHelp()
+        {
+            return Help;
+        }
+
+        static public implicit operator string(
+            ParameterOptionString arg)
+        {
+            return arg._value;
+        }
+
+        public override string ToString()
+        {
+            return _value;
+        }
+
+        virtual public IEnumerable<string> ToValues(string arg)
+        {
+            yield return arg.Substring(OptionName.Length + 3);
+        }
+
+        public bool Parse(string value)
+        {
+            _value = value;
+            return true;
+        }
+
+        virtual public bool IsPrefix(string arg)
+        {
+            return arg.StartsWith($"--{OptionName}=");
+        }
+
+        public bool RequireSingleValue()
+        {
+            return true;
         }
     }
 }

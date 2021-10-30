@@ -46,6 +46,12 @@ namespace zip2
             ["-l"] = ListCommandText,
             ["-c"] = CreateCommandText,
             ["-r"] = RestoreCommandText,
+        }.ToImmutableDictionary();
+
+        readonly static ImmutableDictionary<string, string>
+        OptionShortcuts =
+        new Dictionary<string, string>()
+        {
             ["-q"] = "--quiet",
         }.ToImmutableDictionary();
 
@@ -82,6 +88,7 @@ namespace zip2
 
             var argsFirstPhase = Helper.ExpandToCommand(
                 mainArgs, CommandShortcuts,
+                OptionShortcuts,
                 new Dictionary<string, string>(){
                     ["-f"] = "--file=",
                     ["-T"] = "--files-from=",

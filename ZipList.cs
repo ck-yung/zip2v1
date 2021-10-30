@@ -80,46 +80,46 @@ namespace zip2.list
         static protected Func<string, bool> NameFilter { get; set; }
             = (_) => true;
 
+        protected Func<string,bool> ToNameFilterFunc(string[] args)
+        {
+            var regexs = args
+                .Select((it) => it.ToDosRegex())
+                .ToArray();
+
+            args = args
+                .Select((it) => it.Replace("\\", "/"))
+                .ToArray();
+
+            Func<string, bool> filterToFullPath =
+                (arg) => args.Any((it)
+                => it.Equals(arg));
+
+            Func<string, bool> filterToFilename =
+                (arg) =>
+                {
+                    var filename = Path.GetFileName(arg);
+                    return regexs.Any((it)
+                        => it.Match(filename).Success);
+                };
+
+            return (arg)
+                => filterToFullPath(arg)
+                || filterToFilename(arg);
+        }
+
         public override bool Parse(IEnumerable<string> args)
         {
-            var qry9 = opts
-                .Aggregate(args, (seq, opt) => opt.Parse(seq))
-                .GroupBy((it) => it.StartsWith('-'))
-                .ToDictionary((grp) => grp.Key, (grp) => grp.ToArray());
+            var (optUnknown, otherArgs) = opts.ParseFrom(args);
 
-            if (qry9.ContainsKey(true))
+            if (optUnknown.Length > 0)
             {
                 throw new InvalidValueException(
-                    qry9[true][0], nameof(list));
+                    optUnknown[0], nameof(list));
             }
 
-            string[] otherArgs = qry9.ContainsKey(false)
-                ? qry9[false] : Array.Empty<string>();
-            if (otherArgs.Length>0)
+            if (otherArgs.Length > 0)
             {
-                var regexs = otherArgs
-                    .Select((it) => it.ToDosRegex())
-                    .ToArray();
-
-                otherArgs = otherArgs
-                    .Select((it) => it.Replace("\\", "/"))
-                    .ToArray();
-
-                Func<string, bool> filterToFullPath =
-                    (arg) => otherArgs.Any((it)
-                    => it.Equals(arg));
-
-                Func<string, bool> filterToFilename =
-                    (arg) =>
-                    {
-                        var filename = Path.GetFileName(arg);
-                        return regexs.Any((it)
-                            => it.Match(filename).Success);
-                    };
-
-                NameFilter = (arg)
-                    => filterToFullPath(arg)
-                    || filterToFilename(arg);
+                NameFilter = ToNameFilterFunc(otherArgs);
             }
 
             return true;
@@ -127,18 +127,7 @@ namespace zip2.list
 
         public override int SayHelp()
         {
-            Console.WriteLine("Syntax: zip2 --list --file=ZIPFILE [OPT ..]");
-            Console.WriteLine("OPT:");
-            foreach (var opt in opts)
-            {
-                var prefix = $"--{opt.Name()}=";
-                if (opt is ISwitch || opt is ParameterSwitch)
-                {
-                    prefix = $"--{opt.Name()} ";
-                }
-                Console.WriteLine($"  {prefix,20}{opt.OnlineHelp()}");
-            }
-            return 0;
+            return base.SayHelp(nameof(list), opts);
         }
 
         static internal ParameterFunction<long, string> SizeFormat =

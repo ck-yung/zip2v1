@@ -5,6 +5,20 @@ namespace zip2
 {
     internal static class Helper
     {
+        static public (string[] otherOptions, string[] otherArgs)
+            ParseFrom(
+            this IParser[] opts, IEnumerable<string> args)
+        {
+            var qry9 = opts
+                .Aggregate(args, (seq, opt) => opt.Parse(seq))
+                .GroupBy((it) => it.StartsWith('-'))
+                .ToDictionary((grp) => grp.Key, (grp) => grp.ToArray());
+            return (qry9.ContainsKey(true) ? qry9[true]
+                : Array.Empty<string>(),
+                qry9.ContainsKey(false) ? qry9[false]
+                : Array.Empty<string>());
+        }
+
         static public IEnumerable<string> Parse(
             this IParser opt, IEnumerable<string> args)
         {
@@ -56,11 +70,11 @@ namespace zip2
         }
 
         static public IEnumerable<string>
-        ExpandToCommand
-        ( string[] args
-        , ImmutableDictionary<string, string> fromShortcuts
-        , ImmutableDictionary<string, string> withValueOptions
-        )
+        ExpandToCommand( string[] args
+            , ImmutableDictionary<string, string> commandShortcuts
+            , ImmutableDictionary<string, string> optionShortcuts
+            , ImmutableDictionary<string, string> withValueOptions
+            )
         {
             IEnumerable<string> ExpandCombiningShortcut()
             {
@@ -80,9 +94,13 @@ namespace zip2
             while (enumThe.MoveNext())
             {
                 var current = enumThe.Current;
-                if (fromShortcuts.ContainsKey(current))
+                if (commandShortcuts.ContainsKey(current))
                 {
-                    yield return fromShortcuts[current];
+                    yield return commandShortcuts[current];
+                }
+                else if (optionShortcuts.ContainsKey(current))
+                {
+                    yield return optionShortcuts[current];
                 }
                 else if (withValueOptions.ContainsKey(current))
                 {
