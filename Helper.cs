@@ -29,20 +29,31 @@ namespace zip2
                     (it) => opt.ToValues(it))
                     .SelectMany((seq2) => seq2));
 
-            if (opt.RequireSingleValue()
-            && founds.Length > 1)
-            {
-                throw new TooManyValuesException(
-                    $"Too many value to --{opt.Name()}");
-            }
+            if (founds.Length == 0) return rtn;
 
-            var invalidValue = founds
-                .Where((it) => !opt.Parse(it))
-                .FirstOrDefault();
-            if (!string.IsNullOrEmpty(invalidValue))
+            if (opt.RequireSingleValue())
             {
-                throw new InvalidValueException(
-                    invalidValue, opt.Name());
+                if (founds.Length > 1)
+                {
+                    throw new TooManyValuesException(
+                        $"Too many value to --{opt.Name()}");
+                }
+                if (!opt.Parse(founds[0]))
+                {
+                    throw new InvalidValueException(
+                        founds[0], opt.Name());
+                }
+            }
+            else
+            {
+                if (!opt.ParseMany(founds
+                    .Select((it) => it.Split(','))
+                    .SelectMany((it) => it)
+                    .Distinct()))
+                {
+                    throw new InvalidValueException(
+                        String.Join(';',founds), opt.Name());
+                }
             }
 
             return rtn;

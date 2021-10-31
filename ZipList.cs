@@ -409,7 +409,7 @@ namespace zip2.list
             };
     }
 
-    sealed class Opt: ParameterOptionSetter<bool>
+    sealed class Opt: ParameterOptionSetter<int>
     {
         static public readonly Opt Show = new Opt();
         public Func<long, string> Crc { get; set; }
@@ -419,22 +419,27 @@ namespace zip2.list
         public Func<string,string> CompressedText { get; private set;}
         = (_) => string.Empty;
 
-        private Opt() : base("show", "crc,compress", defaultValue: false,
-        parse: (value, obj) => {
-            switch (value)
-            {
-                case "crc":
-                    Show.Crc = (arg) => arg.ToString("X08") + " ";
-                    // ................... 123456789
-                    Show.CrcTotal = () => "         ";
-                    return true;
-                case "compress":
-                    Show.CompressedText = (arg) => arg;
-                    return true;
-                default:
-                    return false;
-            }
-        })
+        private Opt() : base("show", "crc,compress",
+            defaultValue: 0,
+            parseMany: (values) => {
+                foreach (var arg in values)
+                {
+                    switch (arg)
+                    {
+                        case "crc":
+                            Show.Crc = (arg) => arg.ToString("X08") + " ";
+                            // ................... 123456789
+                            Show.CrcTotal = () => "         ";
+                            break;
+                        case "compress":
+                            Show.CompressedText = (arg) => arg;
+                            break;
+                        default:
+                            return false;
+                    }
+                };
+                return true;
+            })
         {
         }
 
@@ -446,7 +451,7 @@ namespace zip2.list
             }
         }
 
-        internal class HideClass: ParameterOptionSetter<bool>
+        internal class HideClass: ParameterOptionSetter<int>
         {
             public Func<string,string> RatioText { get; private set;}
             = (it) => it;
@@ -461,35 +466,41 @@ namespace zip2.list
 
             internal HideClass() : base("hide",
             "ratio,size,date,crypted,count",
-            defaultValue: false,
-            parse: (value, obj) => {
-                switch (value)
+            defaultValue: 0,
+            parseMany: (values) =>
+            {
+                foreach (var arg in values)
                 {
-                    case "ratio":
-                        Hide.RatioText = (_) => string.Empty;
-                        return true;
-                    case "size":
-                        Hide.SizeText = (_) => string.Empty;
-                        return true;
-                    case "date":
-                        Hide.DateText = (_) => string.Empty;
-                        return true;
-                    case "crypted":
-                        Hide.CryptedMarkText = (_) => string.Empty;
-                        return true;
-                    case "count":
-                        Hide.CountText = (_) => string.Empty;
-                        return true;
-                    default:
-                        return false;
-                }
+                    switch (arg)
+                    {
+                        case "ratio":
+                            Hide.RatioText = (_) => string.Empty;
+                            break;
+                        case "size":
+                            Hide.SizeText = (_) => string.Empty;
+                            break;
+                        case "date":
+                            Hide.DateText = (_) => string.Empty;
+                            break;
+                        case "crypted":
+                            Hide.CryptedMarkText = (_) => string.Empty;
+                            break;
+                        case "count":
+                            Hide.CountText = (_) => string.Empty;
+                            break;
+                        default:
+                            return false;
+                    }
+                };
+                return true;
             })
             {
             }
 
             override public IEnumerable<string> ToValues(string arg)
             {
-                foreach (var token in arg.Substring(Name().Length + 3).Split(','))
+                foreach (var token in arg[
+                    (Name().Length + 3)..].Split(','))
                 {
                     yield return token;
                 }

@@ -8,8 +8,11 @@ namespace zip2
         bool IsPrefix(string arg);
         IEnumerable<string> ToValues(string arg);
         bool RequireSingleValue();
+        bool ParseMany(IEnumerable<string> values);
+        static Func<IEnumerable<string>, bool>
+            FakeParseMany = (_) => false;
     }
- 
+
     interface IInvoke<T,R>: IParser
     {
         R Invoke(T arg);
@@ -29,7 +32,7 @@ namespace zip2
         protected readonly bool _requiredSingleValue;
 
         public CommandLineOption( string option, string help,
-        Func<T,R> invokeDefault, bool requiredSingleValue = true)
+        Func<T,R> invokeDefault, bool requiredSingleValue)
         {
             Option = option;
             Help = help;
@@ -76,6 +79,11 @@ namespace zip2
         {
             return _requiredSingleValue;
         }
+
+        public bool ParseMany(IEnumerable<string> values)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     class CommandLineOptionSetter<T,R>
@@ -83,9 +91,9 @@ namespace zip2
     {
         public CommandLineOptionSetter(
             string option, string help, Func<T, R> invokeDefault,
-            Func<string, CommandLineOptionSetter<T, R>, bool> parse,
-            bool requiredSingleValue = true)
-            : base(option, help, invokeDefault, requiredSingleValue)
+            Func<string, CommandLineOptionSetter<T, R>, bool> parse)
+            : base(option, help, invokeDefault,
+                  requiredSingleValue:true)
         {
             _parse = (value) => parse(value,this);
         }

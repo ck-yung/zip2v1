@@ -79,7 +79,7 @@ namespace zip2
         readonly protected bool _requiredSingleValue;
 
         protected ParameterOption(string option, string help,
-            R defaultValue, bool requiredSingleValue = true)
+            R defaultValue, bool requiredSingleValue)
         {
             OptionName = option;
             Help = help;
@@ -116,19 +116,42 @@ namespace zip2
         {
             return _requiredSingleValue;
         }
+
+        public virtual bool ParseMany(IEnumerable<string> values)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public abstract class ParameterFunction<T, R> :
         ParameterOption<Func<T,R>>
     {
         public ParameterFunction(string option, string help,
-            Func<T,R> defaultValue,
-            bool requiredSingleValue = true) :
-            base(option,help,defaultValue, requiredSingleValue)
+            Func<T,R> defaultValue) :
+            base(option, help, defaultValue,
+                requiredSingleValue:true)
         { }
+
         public R Invoke(T arg)
         {
             return ((Func<T, R>)_value)(arg);
+        }
+
+        protected Func<IEnumerable<string>, bool> _parseMany
+            = IParser.FakeParseMany;
+
+        public override bool ParseMany(IEnumerable<string> values)
+        {
+            return _parseMany(values);
+        }
+
+        public ParameterFunction(string option, string help,
+            Func<T, R> defaultValue,
+            Func<IEnumerable<string>, bool> parseMany) :
+            base(option, help, defaultValue,
+                requiredSingleValue: false)
+        {
+            _parseMany = parseMany;
         }
     }
 
@@ -140,18 +163,39 @@ namespace zip2
             _value = newValue;
             return true;
         }
+
         readonly Func<string, ParameterOptionSetter<R>, bool> _parse;
+
         public ParameterOptionSetter(string option, string help,
             R defaultValue,
-            Func<string, ParameterOptionSetter<R>, bool> parse,
-            bool requiredSingleValue = false) :
-            base (option, help, defaultValue, requiredSingleValue)
+            Func<string, ParameterOptionSetter<R>, bool> parse) :
+            base (option, help, defaultValue,
+                requiredSingleValue:true)
         {
             _parse = parse;
         }
+
         override public bool Parse(string arg)
         {
             return _parse(arg,this);
+        }
+
+        readonly Func<IEnumerable<string>, bool> _parseMany
+            = IParser.FakeParseMany;
+
+        public ParameterOptionSetter(string option, string help,
+            R defaultValue,
+            Func<IEnumerable<string>, bool> parseMany) :
+            base(option, help, defaultValue,
+                requiredSingleValue: false)
+        {
+            _parse = (_, _) => false;
+            _parseMany = parseMany;
+        }
+
+        override public bool ParseMany(IEnumerable<string> values)
+        {
+            return _parseMany(values);
         }
     }
 
@@ -170,11 +214,11 @@ namespace zip2
         }
 
         readonly Func<string, ParameterFunctionSetter<T, R>, bool> _parse;
+
         public ParameterFunctionSetter(string option, string help,
             Func<T, R> defaultValue,
-            Func<string, ParameterFunctionSetter<T, R>, bool> parse,
-            bool requiredSingleValue = true)
-            : base(option,help,defaultValue, requiredSingleValue)
+            Func<string, ParameterFunctionSetter<T, R>, bool> parse)
+            : base(option, help, defaultValue)
         {
             _parse = parse;
         }
@@ -185,13 +229,13 @@ namespace zip2
         Action _whenSwitch = () => {};
         public ParameterSwitch(string option)
             : base(option,string.Empty,false,
-            requiredSingleValue:false)
+            requiredSingleValue:true)
         {
         }
 
         public ParameterSwitch(string option, Action whenSwitch)
             : base(option,string.Empty,false,
-            requiredSingleValue:false)
+            requiredSingleValue:true)
         {
             _whenSwitch = whenSwitch;
         }
@@ -223,8 +267,7 @@ namespace zip2
         Action _whenSwitch = () => { };
         public ParameterFunctionSwitch(string option, string help,
             Func<T, R> defaultValue, Func<T, R> altValue)
-            : base(option, help, defaultValue,
-            requiredSingleValue: true)
+            : base(option, help, defaultValue)
         {
             this.altValue = altValue;
         }
@@ -232,8 +275,7 @@ namespace zip2
         public ParameterFunctionSwitch(string option, string help,
             Func<T, R> defaultValue, Func<T, R> altValue,
             Action whenSwitch)
-            : base(option, help, defaultValue,
-            requiredSingleValue: true)
+            : base(option, help, defaultValue)
         {
             this.altValue = altValue;
             _whenSwitch = whenSwitch;
@@ -318,6 +360,11 @@ namespace zip2
         public bool RequireSingleValue()
         {
             return true;
+        }
+
+        public bool ParseMany(IEnumerable<string> values)
+        {
+            throw new NotImplementedException();
         }
     }
 }
