@@ -53,14 +53,14 @@ namespace zip2
             {
                 Console.Write("Syntax: zip2");
                 Console.WriteLine(
-                    $" {CommandShortcuts[shortName]} --help");
+                    $" {CommandShortcuts[shortName]} -?");
             }
             Console.WriteLine();
             Console.WriteLine("Shortcut command:");
             foreach (var shortName in CommandShortcuts.Keys)
             {
                 Console.WriteLine(
-                    $"Syntax: zip2 {shortName}f ZIPFILENAME [OPT ..]");
+                    $"Syntax: zip2 {shortName}f ZIPFILENAME [FILE ..] [OPT ..]");
             }
             return 1;
         }

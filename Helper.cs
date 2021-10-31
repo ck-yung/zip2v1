@@ -263,6 +263,18 @@ namespace zip2
             if (parts.Length == 1) return ".";
             return parts[0];
         }
+
+        static public IEnumerable<string> ReadConsoleAllLines()
+        {
+            string? inputLine = null;
+            while (true)
+            {
+                inputLine = Console.ReadLine();
+                if (inputLine == null) break;
+                yield return inputLine;
+            }
+        }
+
     }
 
     internal class Seq<T>

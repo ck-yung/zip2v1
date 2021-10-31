@@ -95,23 +95,12 @@ namespace zip2.list
 
         public override int Invoke()
         {
-            IEnumerable<string> ReadConsoleAllLines()
-            {
-                string? inputLine = null;
-                while (true)
-                {
-                    inputLine = Console.ReadLine();
-                    if (inputLine == null) break;
-                    yield return inputLine;
-                }
-            }
-
             if (!string.IsNullOrEmpty(FilesFrom))
             {
                 if (NameFilter!= Helper.StringFilterAlwaysTrue)
                 {
-                    Console.Write($"'{FilesFromPrefix}' and FILE");
-                    Console.WriteLine(" cannot both be assigned.");
+                    Console.Write($"'{FilesFromPrefix}' and command-line ");
+                    Console.WriteLine(" FILE cannot both be assigned.");
                     return 1;
                 }
 
@@ -123,7 +112,7 @@ namespace zip2.list
                         Console.WriteLine("Only support redir input.");
                         return 1;
                     }
-                    filenames = ReadConsoleAllLines()
+                    filenames = Helper.ReadConsoleAllLines()
                     .Select((it) => it.Trim())
                     .Where((it) => it.Length>0)
                     .Select((it) => Helper.ToStandardDirSep(it))
