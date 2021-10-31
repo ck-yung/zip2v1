@@ -83,8 +83,8 @@ namespace zip2
         static public IEnumerable<string>
         ExpandToCommand( string[] args
             , ImmutableDictionary<string, string> commandShortcuts
+            , ImmutableDictionary<string, string> switchShortcuts
             , ImmutableDictionary<string, string> optionShortcuts
-            , ImmutableDictionary<string, string> withValueOptions
             )
         {
             IEnumerable<string> ExpandCombiningShortcut()
@@ -109,19 +109,64 @@ namespace zip2
                 {
                     yield return commandShortcuts[current];
                 }
-                else if (optionShortcuts.ContainsKey(current))
+                else if (switchShortcuts.ContainsKey(current))
                 {
-                    yield return optionShortcuts[current];
+                    yield return switchShortcuts[current];
                 }
-                else if (withValueOptions.ContainsKey(current))
+                else if (optionShortcuts.ContainsKey(current))
                 {
                     if (!enumThe.MoveNext())
                     {
                         throw new ArgumentException(
-                            $"Missing value to '{current}','{withValueOptions[current]}'");
+                            $"Missing value to '{current}','{optionShortcuts[current]}'");
                     }
                     var valueThe = enumThe.Current;
-                    yield return $"{withValueOptions[current]}{valueThe}";
+                    yield return $"{optionShortcuts[current]}{valueThe}";
+                }
+                else
+                {
+                    yield return current;
+                }
+            }
+        }
+
+        static public IEnumerable<string>
+        ExpandToOptions(IEnumerable<string> args
+            , ImmutableDictionary<string, string> switchShortcuts
+            , ImmutableDictionary<string, string> optionShortcuts
+            )
+        {
+            IEnumerable<string> ExpandCombiningShortcut()
+            {
+                var enum2 = args.AsEnumerable().GetEnumerator();
+                while (enum2.MoveNext())
+                {
+                    var curr2 = enum2.Current;
+                    if (curr2.Length < 3) yield return curr2;
+                    else if (curr2.StartsWith("--")) yield return curr2;
+                    else if (curr2[0] != '-') yield return curr2;
+                    else foreach (var chOpt in curr2[1..])
+                            yield return $"-{chOpt}";
+                }
+            }
+
+            var enumThe = ExpandCombiningShortcut().GetEnumerator();
+            while (enumThe.MoveNext())
+            {
+                var current = enumThe.Current;
+                if (switchShortcuts.ContainsKey(current))
+                {
+                    yield return switchShortcuts[current];
+                }
+                else if (optionShortcuts.ContainsKey(current))
+                {
+                    if (!enumThe.MoveNext())
+                    {
+                        throw new ArgumentException(
+                            $"Missing value to '{current}','{optionShortcuts[current]}'");
+                    }
+                    var valueThe = enumThe.Current;
+                    yield return $"{optionShortcuts[current]}{valueThe}";
                 }
                 else
                 {

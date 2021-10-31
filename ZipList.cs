@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using System.Text.RegularExpressions;
 using ICSharpCode.SharpZipLib.Zip;
@@ -70,6 +71,17 @@ namespace zip2.list
 
     internal class Command : CommandBase
     {
+        static ImmutableDictionary<string, string> OptionShortCuts =
+            new Dictionary<string, string>
+            {
+                ["-o"] = "--sort=",
+            }.ToImmutableDictionary<string,string>();
+
+        static ImmutableDictionary<string, string> SwitchShortCuts =
+            new Dictionary<string, string>
+            {
+            }.ToImmutableDictionary<string, string>();
+
         public override int Invoke()
         {
             var sum = SumUp.Invoke(zipFilename);
@@ -109,7 +121,10 @@ namespace zip2.list
 
         public override bool Parse(IEnumerable<string> args)
         {
-            var (optUnknown, otherArgs) = opts.ParseFrom(args);
+            var (optUnknown, otherArgs) = opts.ParseFrom(
+                Helper.ExpandToOptions(args,
+                switchShortcuts: SwitchShortCuts,
+                optionShortcuts: OptionShortCuts));
 
             if (optUnknown.Length > 0)
             {
@@ -127,7 +142,28 @@ namespace zip2.list
 
         public override int SayHelp()
         {
-            return base.SayHelp(nameof(list), opts);
+            base.SayHelp(nameof(list), opts);
+
+            bool ifShortCut = false;
+            if (SwitchShortCuts.Any())
+            {
+                ifShortCut = true;
+                Console.WriteLine("Shortcut:");
+                foreach (var opt in SwitchShortCuts)
+                {
+                    Console.WriteLine($"{opt.Key,19} {opt.Value}");
+                }
+            }
+            if (OptionShortCuts.Any())
+            {
+                if (!ifShortCut) Console.WriteLine("Shortcut:");
+                foreach (var opt in OptionShortCuts)
+                {
+                    Console.WriteLine($"{opt.Key,5}  =>  {opt.Value}");
+                }
+            }
+
+            return 0;
         }
 
         static internal ParameterFunction<long, string> SizeFormat =
