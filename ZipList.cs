@@ -145,11 +145,18 @@ namespace zip2.list
         static protected Func<string, bool> NameFilter { get; set; }
             = Helper.StringFilterAlwaysTrue;
 
-        protected Func<string,bool> ToNameAnyMatchFilter(string[] args)
+        protected Func<string,bool> ToNameAnyMatchFilter(
+            IEnumerable<string> args)
         {
-            var regexs = args
+            var argsList = args.ToList();
+            if (!argsList.Any())
+            {
+                return Helper.StringFilterAlwaysTrue;
+            }
+
+            var regexs = argsList
                 .Select((it) => it.ToDosRegex())
-                .ToArray();
+                .ToList();
 
             args = args
                 .Select((it) => it.Replace("\\", "/"))
@@ -259,7 +266,7 @@ namespace zip2.list
             Console.Write($"  {ExclFilePrefix,19}");
             Console.WriteLine( "FILENAME[,FILEWILD ..]");
             Console.Write($"  {ExclDirPrefix,19}");
-            Console.WriteLine( "DIRNAME[,DORWILD] ..");
+            Console.WriteLine( "DIRNAME[,DORWILD] ..]");
 
             bool ifShortCut = false;
             if (SwitchShortCuts.Any())
