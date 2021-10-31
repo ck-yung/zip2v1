@@ -77,6 +77,7 @@ namespace zip2.list
             new Dictionary<string, string>
             {
                 ["-o"] = "--sort=",
+                ["-T"] = FilesFromPrefix,
                 ["-x"] = ExclFilePrefix,
                 ["-X"] = ExclDirPrefix,
             }.ToImmutableDictionary<string,string>();
@@ -89,17 +90,71 @@ namespace zip2.list
                     "--hide=ratio,size,date,crypted,count",
                     "--total=off"
                 },
+                ["-t"] = new string[] { "--total=only" },
             }.ToImmutableDictionary<string, string[]>();
 
         public override int Invoke()
         {
+            IEnumerable<string> ReadConsoleAllLines()
+            {
+                string? inputLine = null;
+                while (true)
+                {
+                    inputLine = Console.ReadLine();
+                    if (inputLine == null) break;
+                    yield return inputLine;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(FilesFrom))
+            {
+                if (NameFilter!= Helper.StringFilterAlwaysTrue)
+                {
+                    Console.Write($"'{FilesFromPrefix}' and FILE");
+                    Console.WriteLine(" cannot both be assigned.");
+                    return 1;
+                }
+
+                string[] filenames = Array.Empty<string>();
+                if (FilesFrom == "-")
+                {
+                    if (!Console.IsInputRedirected)
+                    {
+                        Console.WriteLine("Only support redir input.");
+                        return 1;
+                    }
+                    filenames = ReadConsoleAllLines()
+                    .Select((it) => it.Trim())
+                    .Where((it) => it.Length>0)
+                    .Select((it) => Helper.ToStandardDirSep(it))
+                    .Distinct()
+                    .ToArray();
+                }
+                else
+                {
+                    filenames = File
+                    .ReadAllLines(FilesFrom)
+                    .Select((it) => it.Trim())
+                    .Where((it) => it.Length>0)
+                    .Select((it) => Helper.ToStandardDirSep(it))
+                    .Distinct()
+                    .ToArray();
+                }
+                if (filenames.Length==0)
+                {
+                    Console.WriteLine($"Files from '{FilesFromPrefix}' is blank.");
+                    return 1;
+                }
+                NameFilter = ToNameAnyMatchFilter(filenames);
+            };
+
             var sum = SumUp.Invoke(zipFilename);
             Console.Write(sum.ToConsoleText());
             return 0;
         }
 
         static protected Func<string, bool> NameFilter { get; set; }
-            = (_) => true;
+            = Helper.StringFilterAlwaysTrue;
 
         protected Func<string,bool> ToNameAnyMatchFilter(string[] args)
         {
@@ -129,10 +184,10 @@ namespace zip2.list
         }
 
         static protected Func<string, bool> ExclNameFilter { get; set;}
-            = (_) => /* TODO: check */ false;
+            = Helper.StringFilterAlwaysFalse;
 
         static protected Func<string, bool> ExclDirFilter { get; set;}
-            = (_) => /* TODO: check */ false;
+            = Helper.StringFilterAlwaysFalse;
 
         protected Func<string,bool> ToDirPartAnyMatch(string[] args)
         {
@@ -144,7 +199,7 @@ namespace zip2.list
                 (arg) =>
                 {
                     var dirParts = Path.GetDirectoryName(
-                        arg)?.Split("/")
+                        arg)?.Split('/','\\')
                         ?? Array.Empty<string>();
                     return regexs.Any((it)
                     => dirParts.Any((part)
@@ -349,8 +404,8 @@ namespace zip2.list
                             (new ZipFile( File.OpenRead(filename)))
                             .GetZipEntries()
                             .Where((it) => NameFilter.Invoke(it.Name))
-            // TODO .Where((it) => ! ExclNameFilter.Invoke(it.Name))
-            // TODO .Where((it) => ! ExclDirFilter.Invoke(it.Name))
+                            .Where((it) => ! ExclNameFilter.Invoke(it.Name))
+                            .Where((it) => ! ExclDirFilter.Invoke(it.Name))
                             .GroupBy((item) => Path.GetExtension(item.Name))
                             .Select((grp) => grp.Aggregate(
                                 new ZipEntrySum(
@@ -376,8 +431,8 @@ namespace zip2.list
                             (new ZipFile( File.OpenRead(filename)))
                             .GetZipEntries()
                             .Where((it) => NameFilter.Invoke(it.Name))
-            // TODO .Where((it) => ! ExclNameFilter.Invoke(it.Name))
-            // TODO .Where((it) => ! ExclDirFilter.Invoke(it.Name))
+                            .Where((it) => ! ExclNameFilter.Invoke(it.Name))
+                            .Where((it) => ! ExclDirFilter.Invoke(it.Name))
                             .GroupBy((item) => item.Name.GetRootDirectory())
                             .Select((grp) => grp.Aggregate(
                                 new ZipEntrySum(
@@ -522,6 +577,7 @@ namespace zip2.list
             (IParser) Sort,
             (IParser) SumUp,
             (IParser) Reverse,
+            (IParser) FilesFrom,
             };
     }
 

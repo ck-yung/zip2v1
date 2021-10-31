@@ -5,6 +5,24 @@ namespace zip2
 {
     internal static class Helper
     {
+        static public readonly Func<string,bool>
+        StringFilterAlwaysTrue = (_) => true;
+
+        static public readonly Func<string,bool>
+        StringFilterAlwaysFalse = (_) => false;
+
+        static public string ToStandardDirSep(string arg)
+        {
+            return arg.Replace('\\','/');
+        }
+
+        static public Func<string,string> GetEnvirDirSepFunc()
+        {
+            if (Path.DirectorySeparatorChar!='/')
+                return (it) => it.Replace('/',Path.DirectorySeparatorChar);
+            return (it) => it;
+        }
+
         static public (string[] otherOptions, string[] otherArgs)
             ParseFrom(
             this IParser[] opts, IEnumerable<string> args)

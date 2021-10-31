@@ -34,11 +34,13 @@ namespace zip2
             return (true, others);
         }
 
-        static public ParameterSwitch Quiet = new ParameterSwitch("quiet");
+        static public readonly ParameterSwitch Quiet = new ParameterSwitch("quiet");
 
-        static public ParameterOptionString FilesFrom =
+        static public readonly string FilesFromText = "files-from";
+        static public readonly string FilesFromPrefix = $"--{FilesFromText}=";
+        static public readonly ParameterOptionString FilesFrom =
             new ParameterOptionString(
-                "files-from", "FILENAME_OF_FILE_LIST",
+                FilesFromText, "FILENAME_OF_FILE_LIST  (stdin if -)",
                 defaultValue: string.Empty);
 
         public int SayHelp
