@@ -40,7 +40,7 @@ namespace zip2.restore
 
             if (otherArgs.Length > 0)
             {
-                NameFilter = ToNameFilterFunc(otherArgs);
+                NameFilter = ToNameAnyMatchFilter(otherArgs);
             }
 
             return true;

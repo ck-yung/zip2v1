@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Text;
-using System.Text.RegularExpressions;
 using ICSharpCode.SharpZipLib.Zip;
 
 namespace zip2.list
@@ -71,10 +70,15 @@ namespace zip2.list
 
     internal class Command : CommandBase
     {
+        static readonly public string ExclFilePrefix = "--excl-file=";
+        static readonly public string ExclDirPrefix = "--excl-dir=";
+
         static ImmutableDictionary<string, string> OptionShortCuts =
             new Dictionary<string, string>
             {
                 ["-o"] = "--sort=",
+                ["-x"] = ExclFilePrefix,
+                ["-X"] = ExclDirPrefix,
             }.ToImmutableDictionary<string,string>();
 
         static ImmutableDictionary<string, string[]> SwitchShortCuts =
@@ -84,7 +88,7 @@ namespace zip2.list
                 {
                     "--hide=ratio,size,date,crypted,count",
                     "--total=off"
-                }
+                },
             }.ToImmutableDictionary<string, string[]>();
 
         public override int Invoke()
@@ -97,7 +101,7 @@ namespace zip2.list
         static protected Func<string, bool> NameFilter { get; set; }
             = (_) => true;
 
-        protected Func<string,bool> ToNameFilterFunc(string[] args)
+        protected Func<string,bool> ToNameAnyMatchFilter(string[] args)
         {
             var regexs = args
                 .Select((it) => it.ToDosRegex())
@@ -124,13 +128,72 @@ namespace zip2.list
                 || filterToFilename(arg);
         }
 
+        static protected Func<string, bool> ExclNameFilter { get; set;}
+            = (_) => /* TODO: check */ false;
+
+        static protected Func<string, bool> ExclDirFilter { get; set;}
+            = (_) => /* TODO: check */ false;
+
+        protected Func<string,bool> ToDirPartAnyMatch(string[] args)
+        {
+            var regexs = args
+                .Select((it) => it.ToDosRegex())
+                .ToArray();
+
+            Func<string, bool> filterToDirParts =
+                (arg) =>
+                {
+                    var dirParts = Path.GetDirectoryName(
+                        arg)?.Split("/")
+                        ?? Array.Empty<string>();
+                    return regexs.Any((it)
+                    => dirParts.Any((part)
+                    => it.Match(part).Success));
+                };
+
+            return (arg) => filterToDirParts(arg);
+        }
+
         public override bool Parse(IEnumerable<string> args)
         {
-            var (optUnknown, otherArgs) = opts.ParseFrom(
+            (string[] optOther, string[] otherArgs) = opts.ParseFrom(
                 Helper.ExpandToOptions(args,
                 switchShortcuts: SwitchShortCuts,
                 optionShortcuts: OptionShortCuts));
 
+            (string[] optExclNames, IEnumerable<string> otherArgs2)
+            = Helper.SubractStartsWith(
+                optOther.AsEnumerable(), ExclFilePrefix);
+            optExclNames = optExclNames
+                .Select((it) => it.Substring(ExclFilePrefix.Length))
+                .Select((it) => it.Split(","))
+                .SelectMany((it) => it)
+                .Select((it) => it.Trim())
+                .Where((it) => it.Length>0)
+                .Distinct()
+                .ToArray();
+            if (optExclNames.Length > 0)
+            {
+                ExclNameFilter = ToNameAnyMatchFilter(optExclNames);
+            }
+
+            (string[] optExclDir, IEnumerable<string> optUnknownSeq)
+            = Helper.SubractStartsWith(
+                otherArgs2, ExclDirPrefix);
+            optExclDir = optExclDir
+                .Select((it) => it.Substring(ExclDirPrefix.Length))
+                .Select((it) => it.Split(","))
+                .SelectMany((it) => it)
+                .Select((it) => it.Trim())
+                .Where((it) => it.Length>0)
+                .Distinct()
+                .ToArray();
+            if (optExclDir.Length > 0)
+            {
+                ExclDirFilter = ToDirPartAnyMatch(optExclDir);
+            }
+
+            var optUnknown = optUnknownSeq.ToArray();
             if (optUnknown.Length > 0)
             {
                 throw new InvalidValueException(
@@ -139,7 +202,7 @@ namespace zip2.list
 
             if (otherArgs.Length > 0)
             {
-                NameFilter = ToNameFilterFunc(otherArgs);
+                NameFilter = ToNameAnyMatchFilter(otherArgs);
             }
 
             return true;
@@ -148,6 +211,11 @@ namespace zip2.list
         public override int SayHelp()
         {
             base.SayHelp(nameof(list), opts);
+
+            Console.Write($"  {ExclFilePrefix,19}");
+            Console.WriteLine( "FILENAME[,FILEWILD ..]");
+            Console.Write($"  {ExclDirPrefix,19}");
+            Console.WriteLine( "DIRNAME[,DORWILD] ..");
 
             bool ifShortCut = false;
             if (SwitchShortCuts.Any())
@@ -252,6 +320,8 @@ namespace zip2.list
             return (new ZipFile(File.OpenRead(filename)))
             .GetZipEntries()
             .Where((it) => NameFilter.Invoke(it.Name))
+            .Where((it) => ! ExclNameFilter.Invoke(it.Name))
+            .Where((it) => ! ExclDirFilter.Invoke(it.Name))
             .Invoke((seq) => Sort.Invoke(seq))
             .Invoke((seq) => ReverseEntry(seq))
             .Select((itm) =>
@@ -279,6 +349,8 @@ namespace zip2.list
                             (new ZipFile( File.OpenRead(filename)))
                             .GetZipEntries()
                             .Where((it) => NameFilter.Invoke(it.Name))
+            // TODO .Where((it) => ! ExclNameFilter.Invoke(it.Name))
+            // TODO .Where((it) => ! ExclDirFilter.Invoke(it.Name))
                             .GroupBy((item) => Path.GetExtension(item.Name))
                             .Select((grp) => grp.Aggregate(
                                 new ZipEntrySum(
@@ -304,6 +376,8 @@ namespace zip2.list
                             (new ZipFile( File.OpenRead(filename)))
                             .GetZipEntries()
                             .Where((it) => NameFilter.Invoke(it.Name))
+            // TODO .Where((it) => ! ExclNameFilter.Invoke(it.Name))
+            // TODO .Where((it) => ! ExclDirFilter.Invoke(it.Name))
                             .GroupBy((item) => item.Name.GetRootDirectory())
                             .Select((grp) => grp.Aggregate(
                                 new ZipEntrySum(
