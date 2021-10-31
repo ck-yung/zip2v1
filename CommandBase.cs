@@ -17,13 +17,21 @@ namespace zip2
             (string[] found, var others) = args
             .SubractStartsWith(zipFilenamePrefix);
 
-            if (found.Length == 1)
+            if (found.Length != 1)
             {
-                zipFilename = found[0]
-                .Substring(zipFilenamePrefix.Length);
-                return (true, others);
+                return (false, args);
             }
-            return (false, args); ;
+
+            var otherArgs = others.ToArray();
+            if (otherArgs.Contains("-?") ||
+                otherArgs.Contains("--help"))
+            {
+                return (false, args);
+            }
+
+            zipFilename = found[0]
+            .Substring(zipFilenamePrefix.Length);
+            return (true, others);
         }
 
         static public ParameterSwitch Quiet = new ParameterSwitch("quiet");

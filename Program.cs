@@ -4,12 +4,6 @@ namespace zip2
 {
     public class Program
     {
-        static int ShowVersion()
-        {
-            Console.WriteLine("TODO: Show version");
-            return 0;
-        }
-
         static public int Main(string[] argsSecondPhase)
         {
             try
@@ -53,37 +47,17 @@ namespace zip2
         new Dictionary<string, string>()
         {
             ["-q"] = "--quiet",
+            ["-v"] = "--version",
+            ["-h"] = "--help",
+            ["-?"] = "--help",
         }.ToImmutableDictionary();
-
-        static int SayCommanHelp()
-        {
-            Console.WriteLine("Syntax: zip2 -v");
-            Console.WriteLine("Syntax: zip2 --version");
-            Console.WriteLine();
-            Console.WriteLine("On-line help:");
-            foreach  (var shortName in CommandShortcuts.Keys)
-            {
-                Console.Write("Syntax: zip2");
-                Console.WriteLine(
-                    $" {CommandShortcuts[shortName]} --help");
-            }
-            Console.WriteLine();
-            Console.WriteLine("Shortcut command:");
-            foreach  (var shortName in CommandShortcuts.Keys)
-            {
-                Console.WriteLine(
-                    $"Syntax: zip2 {shortName}f ZIPFILENAME [OPT ..]");
-            }
-            return 9;
-        }
 
         static int RunMain(string[] mainArgs)
         {
-            var (showVersion, _) = Helper.SubractAny(
-                mainArgs, new string[] { "-v","--version"});
-            if (showVersion.Any())
+            if (mainArgs.Contains("-v") ||
+                mainArgs.Contains("--version"))
             {
-                return ShowVersion();
+                return OnlineHelp.ShowVersion();
             }
 
             var argsFirstPhase = Helper.ExpandToCommand(
@@ -100,25 +74,25 @@ namespace zip2
                 [ListCommandText] = () => new list.Command(),
                 [CreateCommandText] = () => new create.Command(),
                 [RestoreCommandText] = () => new restore.Command(),
-            };
+            }.ToImmutableDictionary();
 
             var (commands, argsSecondPhase) = Helper.SubractAny(
                 argsFirstPhase, commandMap.Keys.ToArray());
 
-            if (commands.Length!=1)
+            if (commands.Length != 1)
             {
-                return SayCommanHelp();
+                return OnlineHelp.IsShow(
+                    CommandShortcuts);
             }
 
             var commandText = commands[0];
-
             var cmdThe = commandMap[commandText]()!;
 
-            var (isOk, argsThirdPhase) = cmdThe.FindSingleFilename(
+            var (isZipFilenameFound, args) =
+                cmdThe.FindSingleFilename(
                 argsSecondPhase);
-            var (anyHelp, args) = Helper.SubractAny(argsThirdPhase,
-                new string[] { "-?", "-h", "--help" });
-            if ((!isOk) || anyHelp.Any())
+
+            if (!isZipFilenameFound)
             {
                 return cmdThe.SayHelp();
             }
@@ -128,7 +102,7 @@ namespace zip2
                 return cmdThe.Invoke();
             }
 
-            return 99;
+            return 1;
         }
     }
 }
