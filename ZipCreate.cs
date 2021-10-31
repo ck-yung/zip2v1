@@ -63,40 +63,111 @@ namespace zip2.create
             }
 
             int countAdd = 0;
-            using (ZipOutputStream zs = new ZipOutputStream(
-                File.Create(zipFilename)))
+            var zDirThe = Path.GetDirectoryName(zipFilename);
+            var zFilename = Path.GetFileName(zipFilename);
+            var tempFilename = zFilename + "."
+                + Path.GetRandomFileName() + ".tmp";
+            var tempPathname = (string.IsNullOrEmpty(zDirThe))
+                ? tempFilename : Path.Join(zDirThe, tempFilename);
+            using (var realOutputFile = File.Create(zipFilename))
             {
-                zs.UseZip64 = UseZip64.Dynamic;
-                zs.SetLevel(CompressLevel);
-
-                foreach (var filename in FilenamesToBeBackup)
+                realOutputFile.Write(new byte[] { 0, 0});
+                using (ZipOutputStream zs = new ZipOutputStream(
+                    File.Create(tempPathname)))
                 {
-                    WriteConsole(filename);
-                    WriteConsole(" ");
-                    countAdd += (AddToZip(filename, zs)) ? 1 : 0;
-                    WriteConsole(Environment.NewLine);
+                    zs.UseZip64 = UseZip64.Dynamic;
+                    zs.SetLevel(CompressLevel);
+
+                    foreach (var filename in FilenamesToBeBackup)
+                    {
+                        WriteConsole(filename);
+                        WriteConsole(" ");
+                        countAdd += (AddToZip(filename, zs)) ? 1 : 0;
+                        WriteConsole(Environment.NewLine);
+                    }
+
+                    zs.Finish();
+                    zs.Close();
                 }
 
-                zs.Finish();
-                zs.Close();
+                switch (countAdd)
+                {
+                    case 0:
+                        WriteConsole("No file is stored.");
+                        if (File.Exists(tempPathname))
+                        {
+                            File.Delete(tempPathname);
+                        }
+                        break;
+                    case 1:
+                        WriteConsole("One file is stored.");
+                        break;
+                    default:
+                        WriteConsole($"{countAdd} files are stored.");
+                        break;
+                }
             }
-
-            switch (countAdd)
+            var temp2Filename = Path.GetRandomFileName() + ".tmp";
+            var temp2Pathname = (string.IsNullOrEmpty(zDirThe))
+                ? temp2Filename : Path.Join(zDirThe, temp2Filename);
+            switch (File.Exists(zipFilename), File.Exists(tempPathname))
             {
-                case 0:
-                    WriteConsole("No file is stored.");
-                    if (File.Exists(zipFilename))
+                case (true, true):
+                    try
                     {
-                        File.Delete(zipFilename);
+                        var infoZip9 = new FileInfo(zipFilename);
+                        infoZip9.MoveTo(temp2Pathname);
+                    }
+                    catch (Exception ee)
+                    {
+                        Console.Error.WriteLine($"{ee.Message}");
+                        Console.Error.WriteLine(
+                            $" Failed to rename from empty '{zipFilename}'");
+                    }
+
+                    try
+                    {
+                        var infoZip8 = new FileInfo(tempPathname);
+                        infoZip8.MoveTo(zipFilename);
+                    }
+                    catch (Exception ee)
+                    {
+                        Console.Error.WriteLine($"{ee.Message}");
+                        Console.Error.WriteLine(
+                            $"Failed to rename to real '{zipFilename}'");
+                    }
+
+                    try
+                    {
+                        if (File.Exists(temp2Pathname))
+                        {
+                            File.Delete(temp2Pathname);
+                        }
+                    }
+                    catch
+                    {
+                    }
+
+                    break;
+
+                case (false, true):
+                    try
+                    {
+                        var infoZip7 = new FileInfo(tempPathname);
+                        infoZip7.MoveTo(zipFilename);
+                    }
+                    catch (Exception ee)
+                    {
+                        Console.Error.WriteLine($"{ee.Message}");
+                        Console.Error.WriteLine(
+                            $"Failed to rename to '{zipFilename}'");
                     }
                     break;
-                case 1:
-                    WriteConsole("One file is stored.");
-                    break;
                 default:
-                    WriteConsole($"{countAdd} files are stored.");
+                    Console.Error.WriteLine("Failed by some unknown error!");
                     break;
             }
+
             WriteConsole(Environment.NewLine);
 
             return 0;
@@ -112,24 +183,35 @@ namespace zip2.create
                     return false;
                 }
 
+                var sizeThe = (new FileInfo(filename)).Length;
                 var entry = new ZipEntry(Helper.ToStandardDirSep(filename))
                 {
                     DateTime = File.GetLastWriteTime(filename),
-                    Size = (new FileInfo(filename)).Length,
+                    Size = sizeThe,
                 };
 
+                long writtenSize = 0L;
                 zs.PutNextEntry(entry);
                 byte[] buffer = new byte[32 * 1024];
                 using (FileStream fs = File.OpenRead(filename))
                 {
-                    for (int readSize = fs.Read(buffer, 0, buffer.Length);
-                        readSize > 0;
-                        readSize = fs.Read(buffer, 0, buffer.Length))
+                    try
                     {
-                        zs.Write(buffer, 0, readSize);
+                        for (int readSize = fs.Read(buffer, 0, buffer.Length);
+                            readSize > 0;
+                            readSize = fs.Read(buffer, 0, buffer.Length))
+                        {
+                            zs.Write(buffer, 0, readSize);
+                            writtenSize += readSize;
+                        }
+                    }
+                    catch (Exception ee)
+                    {
+                        WriteConsole(ee.Message);
+                        WriteConsole($" wantSize:{sizeThe} but realSize:{writtenSize}");
                     }
                 }
-
+                zs.CloseEntry();
                 return true;
             }
             catch (Exception ee)
