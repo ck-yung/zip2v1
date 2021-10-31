@@ -132,7 +132,7 @@ namespace zip2
 
         static public IEnumerable<string>
         ExpandToOptions(IEnumerable<string> args
-            , ImmutableDictionary<string, string> switchShortcuts
+            , ImmutableDictionary<string, string[]> switchShortcuts
             , ImmutableDictionary<string, string> optionShortcuts
             )
         {
@@ -156,7 +156,10 @@ namespace zip2
                 var current = enumThe.Current;
                 if (switchShortcuts.ContainsKey(current))
                 {
-                    yield return switchShortcuts[current];
+                    foreach (var switchThe in switchShortcuts[current])
+                    {
+                        yield return switchThe;
+                    }
                 }
                 else if (optionShortcuts.ContainsKey(current))
                 {

@@ -77,10 +77,15 @@ namespace zip2.list
                 ["-o"] = "--sort=",
             }.ToImmutableDictionary<string,string>();
 
-        static ImmutableDictionary<string, string> SwitchShortCuts =
-            new Dictionary<string, string>
+        static ImmutableDictionary<string, string[]> SwitchShortCuts =
+            new Dictionary<string, string[]>
             {
-            }.ToImmutableDictionary<string, string>();
+                ["-b"] = new string[]
+                {
+                    "--hide=ratio,size,date,crypted,count",
+                    "--total=off"
+                }
+            }.ToImmutableDictionary<string, string[]>();
 
         public override int Invoke()
         {
@@ -151,7 +156,8 @@ namespace zip2.list
                 Console.WriteLine("Shortcut:");
                 foreach (var opt in SwitchShortCuts)
                 {
-                    Console.WriteLine($"{opt.Key,19} {opt.Value}");
+                    Console.Write($"{opt.Key,19} ->");
+                    Console.WriteLine($"  {string.Join("  ",opt.Value)}");
                 }
             }
             if (OptionShortCuts.Any())
@@ -159,7 +165,7 @@ namespace zip2.list
                 if (!ifShortCut) Console.WriteLine("Shortcut:");
                 foreach (var opt in OptionShortCuts)
                 {
-                    Console.WriteLine($"{opt.Key,5}  =>  {opt.Value}");
+                    Console.WriteLine($"{opt.Key,19} ->  {opt.Value}");
                 }
             }
 
