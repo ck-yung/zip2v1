@@ -260,29 +260,11 @@ namespace zip2.create
 
         public override int SayHelp()
         {
-            base.SayHelp(nameof(create), opts
-                , "NEWZIPFILE");
-
-            bool ifShortCut = false;
-            if (SwitchShortCuts.Any())
-            {
-                ifShortCut = true;
-                Console.WriteLine("Shortcut:");
-                foreach (var opt in SwitchShortCuts)
-                {
-                    Console.Write($"{opt.Key,19} ->");
-                    Console.WriteLine($"  {string.Join("  ", opt.Value)}");
-                }
-            }
-            if (OptionShortCuts.Any())
-            {
-                if (!ifShortCut) Console.WriteLine("Shortcut:");
-                foreach (var opt in OptionShortCuts)
-                {
-                    Console.WriteLine($"{opt.Key,19} ->  {opt.Value}");
-                }
-            }
-            return 0;
+            return SayHelp(nameof(create), opts
+                , OptionShortCuts
+                , SwitchShortCuts
+                , zipFileHint:"NEWZIPFILE"
+                );
         }
 
         static readonly ParameterOption<int> CompressLevel

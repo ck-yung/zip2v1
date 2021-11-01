@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace zip2
 {
     abstract class CommandBase
@@ -43,8 +45,11 @@ namespace zip2
                 FilesFromText, "FILENAME_OF_FILE_LIST  (stdin if -)",
                 defaultValue: string.Empty);
 
-        public int SayHelp
-            ( string name, IParser[] opts
+        public int SayHelp( string name
+            , IParser[] parsers
+            , ImmutableDictionary<string, string>? optionShortCuts = null
+            , ImmutableDictionary<string, string[]>? switchShortCuts = null
+            , Action? optionalAction = null
             , string zipFileHint = "ZIPFILE"
             )
         {
@@ -54,8 +59,9 @@ namespace zip2
             Console.Write(
                 $"Syntax: zip2 -{name[0]}f {zipFileHint}");
             Console.WriteLine(" [OPT ..] [FILE ..]");
+
             Console.WriteLine("OPT:");
-            foreach (var opt in opts)
+            foreach (var opt in parsers)
             {
                 var prefix = $"--{opt.Name()}=";
                 if (opt is ISwitch || opt is ParameterSwitch)
@@ -68,6 +74,35 @@ namespace zip2
                     Console.Write(opt.OnlineHelp());
                 }
                 Console.WriteLine();
+            }
+
+            optionalAction?.Invoke();
+
+            Action printShortcutTitle = () =>
+            {
+                Console.WriteLine("Shortcut:");
+            };
+
+            if (optionShortCuts?.Any() ?? false)
+            {
+                printShortcutTitle();
+                printShortcutTitle = () => { };
+                foreach (var key in optionShortCuts.Keys
+                    .OrderBy((it) => it))
+                {
+                    Console.WriteLine($"{key,19} ->  {optionShortCuts[key]}");
+                }
+            }
+
+            if (switchShortCuts?.Any() ?? false)
+            {
+                printShortcutTitle();
+                foreach (var key in switchShortCuts.Keys
+                    .OrderBy((it) => it))
+                {
+                    Console.Write($"{key,19} ->");
+                    Console.WriteLine($"  {string.Join("  ", switchShortCuts[key])}");
+                }
             }
             return 0;
         }

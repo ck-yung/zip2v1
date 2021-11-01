@@ -164,7 +164,7 @@ namespace zip2.list
 
             Func<string, bool> filterToFullPath =
                 (arg) => args.Any((it)
-                => it.Equals(arg));
+                => it.Equals(arg,StringComparison.InvariantCultureIgnoreCase));
 
             Func<string, bool> filterToFilename =
                 (arg) =>
@@ -261,34 +261,15 @@ namespace zip2.list
 
         public override int SayHelp()
         {
-            base.SayHelp(nameof(list), opts);
-
-            Console.Write($"  {ExclFilePrefix,19}");
-            Console.WriteLine( "FILENAME[,FILEWILD ..]");
-            Console.Write($"  {ExclDirPrefix,19}");
-            Console.WriteLine( "DIRNAME[,DORWILD] ..]");
-
-            bool ifShortCut = false;
-            if (SwitchShortCuts.Any())
-            {
-                ifShortCut = true;
-                Console.WriteLine("Shortcut:");
-                foreach (var opt in SwitchShortCuts)
+            return SayHelp(nameof(list), opts,
+                OptionShortCuts, SwitchShortCuts,
+                optionalAction:() =>
                 {
-                    Console.Write($"{opt.Key,19} ->");
-                    Console.WriteLine($"  {string.Join("  ",opt.Value)}");
-                }
-            }
-            if (OptionShortCuts.Any())
-            {
-                if (!ifShortCut) Console.WriteLine("Shortcut:");
-                foreach (var opt in OptionShortCuts)
-                {
-                    Console.WriteLine($"{opt.Key,19} ->  {opt.Value}");
-                }
-            }
-
-            return 0;
+                    Console.Write($"  {ExclFilePrefix,19}");
+                    Console.WriteLine("FILENAME[,FILEWILD ..]");
+                    Console.Write($"  {ExclDirPrefix,19}");
+                    Console.WriteLine("DIRNAME[,DORWILD] ..]");
+                });
         }
 
         static internal ParameterFunction<long, string> SizeFormat =

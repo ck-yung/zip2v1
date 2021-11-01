@@ -28,7 +28,7 @@ namespace zip2.restore
                     {
                         if (!Console.IsInputRedirected)
                         {
-                            Console.WriteLine("Only support redir input.");
+                            Console.WriteLine("Only support redir '--files-from=-'");
                             return 1;
                         }
 
@@ -45,6 +45,7 @@ namespace zip2.restore
                             File.ReadAllLines(FilesFrom)
                             .Select((it) => it.Trim())
                             .Where((it) => it.Length > 0)
+                            .Select((it) => Helper.ToStandardDirSep(it))
                             .Distinct());
                     }
                     break;
@@ -52,7 +53,7 @@ namespace zip2.restore
                     break;
             }
 
-            var toEnvirDirSep = Helper.GetEnvirDirSepFunc();
+            string? basicOutputDir = null;
 
             switch (string.IsNullOrEmpty(OutputDir),
                 string.IsNullOrEmpty(NewOutputDir))
@@ -70,18 +71,7 @@ namespace zip2.restore
                             $"Output dir '{OutputDir}' is NOT found!");
                         return 1;
                     }
-
-                    if (SkipOldPath)
-                    {
-                        ToOutputFilename = (it) =>
-                        toEnvirDirSep(Path.Join(OutputDir,
-                            Path.GetFileName(it)));
-                    }
-                    else
-                    {
-                        ToOutputFilename = (it) =>
-                        toEnvirDirSep(Path.Join(OutputDir, it));
-                    }
+                    basicOutputDir = OutputDir;
                     break;
 
                 case (true, false):
@@ -91,24 +81,34 @@ namespace zip2.restore
                             $"New output dir '{NewOutputDir}' is FOUND!");
                         return 1;
                     }
-
                     Directory.CreateDirectory(NewOutputDir);
                     WriteConsole($"New output dir {NewOutputDir} is created");
                     WriteConsole(Environment.NewLine);
+                    basicOutputDir = NewOutputDir;
+                    break;
 
-                    if (SkipOldPath)
-                    {
-                        ToOutputFilename = (it) =>
-                        toEnvirDirSep(Path.Join(NewOutputDir,
-                            Path.GetFileName(it)));
-                    }
-                    else
-                    {
-                        ToOutputFilename = (it) =>
-                        toEnvirDirSep(Path.Join(NewOutputDir, it));
-                    }
+                default:
+                    break;
+            }
+
+            var toEnvirDirSep = Helper.GetEnvirDirSepFunc();
+            switch (string.IsNullOrEmpty(basicOutputDir),
+                (bool)SkipOldPath)
+            {
+                case (true, true):
+                    ToOutputFilename = (it) => Path.GetFileName(it);
+                    break;
+                case (true, false):
+                    ToOutputFilename = (it) => toEnvirDirSep(it);
+                    break;
+                case (false, true):
+                    ToOutputFilename = (it) => toEnvirDirSep(
+                        Path.Join(basicOutputDir,
+                        Path.GetFileName(it)));
                     break;
                 default:
+                    ToOutputFilename = (it) => toEnvirDirSep(
+                        Path.Join(basicOutputDir,it));
                     break;
             }
 
@@ -141,13 +141,14 @@ namespace zip2.restore
                         using (var inpStream = zFile.GetInputStream(it.Entry))
                         {
                             inpStream.CopyTo(streamThe, 32 * 1024);
-                            rtn = true;
                         }
-                        ForceRename(tmpFilename,it.TargetFilename);
+                        ForceRename(tmpFilename,it.TargetFilename,it.Entry.DateTime);
+                        rtn = true;
                     }
                     catch (Exception ee)
                     {
-                        WriteConsole(ee.Message);
+                        WriteConsole(" ");
+                        WriteConsole(ee.ToString());
                     }
                     WriteConsole(Environment.NewLine);
                     return rtn;
@@ -171,50 +172,52 @@ namespace zip2.restore
             return 0;
         }
 
-        void ForceRename( string oldFileame, string targetFilename)
+        static Action<string, DateTime> SetTimestamp =
+            (filename, timestamp) => File.SetLastWriteTime(filename, timestamp);
+
+        void ForceRename( string oldFileame, string targetFilename,
+            DateTime originalTimestamp)
         {
             int cnt = 0;
             var theFilename = targetFilename;
-            var dirFileName = Path.GetFileNameWithoutExtension(theFilename);
+            var dir2 = Path.GetDirectoryName(theFilename);
+            var dirWithFileName = (string.IsNullOrEmpty(dir2))
+                ? Path.GetFileNameWithoutExtension(theFilename)
+                : Path.Join(dir2, Path.GetFileNameWithoutExtension(theFilename));
             var extThe = Path.GetExtension(theFilename);
+
             while (File.Exists(theFilename))
             {
                 cnt += 1;
-                theFilename = $"{dirFileName} ({cnt}){extThe}";
+                theFilename = $"{dirWithFileName} ({cnt}){extThe}";
             }
-            (new FileInfo(oldFileame)).MoveTo(targetFilename);
+
+            (new FileInfo(oldFileame)).MoveTo(theFilename);
+
+            if (cnt==0)
+            {
+                if (File.Exists(targetFilename))
+                {
+                    SetTimestamp(targetFilename, originalTimestamp);
+                }
+            }
+            else
+            {
+                WriteConsole($" -> {theFilename}");
+            }
         }
 
         public override int SayHelp()
         {
-            base.SayHelp(nameof(restore), opts);
-
-            Console.Write($"  {ExclFilePrefix,19}");
-            Console.WriteLine("FILENAME[,FILEWILD ..]");
-            Console.Write($"  {ExclDirPrefix,19}");
-            Console.WriteLine("DIRNAME[,DORWILD] ..]");
-
-            bool ifShortCut = false;
-            if (SwitchShortCuts.Any())
-            {
-                ifShortCut = true;
-                Console.WriteLine("Shortcut:");
-                foreach (var opt in SwitchShortCuts)
+            return SayHelp(nameof(restore), opts,
+                OptionShortCuts, SwitchShortCuts,
+                optionalAction:()=>
                 {
-                    Console.Write($"{opt.Key,19} ->");
-                    Console.WriteLine($"  {string.Join("  ", opt.Value)}");
-                }
-            }
-            if (OptionShortCuts.Any())
-            {
-                if (!ifShortCut) Console.WriteLine("Shortcut:");
-                foreach (var opt in OptionShortCuts)
-                {
-                    Console.WriteLine($"{opt.Key,19} ->  {opt.Value}");
-                }
-            }
-
-            return 0;
+                    Console.Write($"  {ExclFilePrefix,19}");
+                    Console.WriteLine("FILENAME[,FILEWILD ..]");
+                    Console.Write($"  {ExclDirPrefix,19}");
+                    Console.WriteLine("DIRNAME[,DORWILD] ..]");
+                });
         }
 
         Action<string> WriteConsole = (msg) => Console.Write(msg);
@@ -289,11 +292,17 @@ namespace zip2.restore
                 "new-dir", help: "NEW_OUTPUT_DIR",
                 defaultValue: string.Empty);
 
-        Func<string, string> ToOutputFilename =
-            (it) => it;
+        Func<string, string> ToOutputFilename = (it) => it;
 
         static ParameterSwitch SkipOldPath =
             new ParameterSwitch("no-dir");
+
+        static ParameterSwitch NotUpdateLastWriteTime =
+            new ParameterSwitch("no-timestamp",
+                whenSwitch: () =>
+                {
+                    SetTimestamp = (_, _) => { };
+                });
 
         static ImmutableDictionary<string, string[]> SwitchShortCuts =
             new Dictionary<string, string[]>
@@ -318,6 +327,7 @@ namespace zip2.restore
             SkipOldPath,
             OutputDir,
             NewOutputDir,
+            NotUpdateLastWriteTime,
         };
     }
 }
