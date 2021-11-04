@@ -7,52 +7,6 @@ namespace zip2.restore
     {
         public override int Invoke()
         {
-            if (!File.Exists(zipFilename))
-            {
-                WriteConsole($"Zip file '{zipFilename}' is NOT found!");
-                WriteConsole(Environment.NewLine);
-                return 1;
-            }
-
-            switch (NameFilter == Helper.StringFilterAlwaysTrue,
-                string.IsNullOrEmpty(FilesFrom))
-            {
-                case (false, false):
-                    WriteConsole("Cannot handle files from --files-from");
-                    WriteConsole($"={FilesFrom} and command-line arg FILE.");
-                    WriteConsole(Environment.NewLine);
-                    return 1;
-
-                case (true, false):
-                    if (FilesFrom == "-")
-                    {
-                        if (!Console.IsInputRedirected)
-                        {
-                            Console.WriteLine("Only support redir '--files-from=-'");
-                            return 1;
-                        }
-
-                        NameFilter = ToNameAnyMatchFilter(
-                            Helper.ReadConsoleAllLines()
-                            .Select((it) => it.Trim())
-                            .Where((it) => it.Length > 0)
-                            .Select((it) => Helper.ToStandardDirSep(it))
-                            .Distinct());
-                    }
-                    else
-                    {
-                        NameFilter = ToNameAnyMatchFilter(
-                            File.ReadAllLines(FilesFrom)
-                            .Select((it) => it.Trim())
-                            .Where((it) => it.Length > 0)
-                            .Select((it) => Helper.ToStandardDirSep(it))
-                            .Distinct());
-                    }
-                    break;
-                default:
-                    break;
-            }
-
             string? basicOutputDir = null;
 
             switch (string.IsNullOrEmpty(OutputDir),
@@ -113,7 +67,7 @@ namespace zip2.restore
             }
 
             var zFile = new ZipFile(File.OpenRead(zipFilename));
-            var countRestore = zFile.GetZipEntries()
+            var countRestore = MyGetZipEntires(zFile)
                 .Where((it) => NameFilter.Invoke(it.Name))
                 .Where((it) => !ExclNameFilter.Invoke(it.Name))
                 .Where((it) => !ExclDirFilter.Invoke(it.Name))
@@ -277,6 +231,11 @@ namespace zip2.restore
             if (Quiet)
             {
                 WriteConsole = (_) => { };
+            }
+
+            if (!ParseFilesForm())
+            {
+                return false;
             }
 
             return true;

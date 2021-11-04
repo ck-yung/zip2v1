@@ -93,81 +93,11 @@ namespace zip2.list
                 ["-t"] = new string[] { "--total=only" },
             }.ToImmutableDictionary<string, string[]>();
 
-        static Func<ZipFile, IEnumerable<ZipEntry>> MyGetZipEntires
+        static protected Func<ZipFile, IEnumerable<ZipEntry>> MyGetZipEntires
         { get; set; } = (zs) => zs.GetZipEntries();
 
         public override int Invoke()
         {
-            IEnumerable<string> ReadConsoleLines()
-            {
-                var reader = new StreamReader(
-                    Console.OpenStandardInput());
-                while (true)
-                {
-                    var inpLine = reader.ReadLine();
-                    if (inpLine == null) break;
-                    yield return inpLine;
-                }
-            }
-
-            IEnumerable<string> ReadFileLines(string filename)
-            {
-                using var reader = File.OpenText(filename);
-                while (true)
-                {
-                    var inpLine = reader.ReadLine();
-                    if (inpLine == null) break;
-                    yield return inpLine;
-                }
-            }
-
-            if (!string.IsNullOrEmpty(FilesFrom))
-            {
-                if (NameFilter!= Helper.StringFilterAlwaysTrue)
-                {
-                    Console.Write($"'{FilesFromPrefix}' and command-line ");
-                    Console.WriteLine(" FILE cannot both be assigned.");
-                    return 1;
-                }
-
-                if (ExclNameFilter != Helper.StringFilterAlwaysFalse)
-                {
-                    Console.Write($"'{FilesFromPrefix}' and command-line ");
-                    Console.WriteLine($" {ExclNameFilter} cannot both be assigned.");
-                    return 1;
-                }
-
-                if (ExclDirFilter != Helper.StringFilterAlwaysFalse)
-                {
-                    Console.Write($"'{FilesFromPrefix}' and command-line ");
-                    Console.WriteLine($" {ExclDirFilter} cannot both be assigned.");
-                    return 1;
-                }
-
-                if (FilesFrom == "-")
-                {
-                    MyGetZipEntires = (zs) =>
-                    {
-                        return ReadConsoleLines()
-                        .Select((it) =>
-                        zs.FindEntry(it, ignoreCase: true))
-                        .Where((it) => it >= 0)
-                        .Select((it) => zs[it]);
-                    };
-                }
-                else
-                {
-                    MyGetZipEntires = (zs) =>
-                    {
-                        return ReadFileLines(FilesFrom)
-                        .Select((it) =>
-                        zs.FindEntry(it, ignoreCase: true))
-                        .Where((it) => it >= 0)
-                        .Select((it) => zs[it]);
-                    };
-                }
-            };
-
             var sum = SumUp.Invoke(zipFilename);
             Console.Write(sum.ToConsoleText());
             return 0;
@@ -236,6 +166,79 @@ namespace zip2.list
             return (arg) => filterToDirParts(arg);
         }
 
+        static IEnumerable<string> ReadConsoleLines()
+        {
+            var reader = new StreamReader(
+                Console.OpenStandardInput());
+            while (true)
+            {
+                var inpLine = reader.ReadLine();
+                if (inpLine == null) break;
+                yield return inpLine;
+            }
+        }
+
+        static IEnumerable<string> ReadFileLines(string filename)
+        {
+            using var reader = File.OpenText(filename);
+            while (true)
+            {
+                var inpLine = reader.ReadLine();
+                if (inpLine == null) break;
+                yield return inpLine;
+            }
+        }
+
+        public virtual bool ParseFilesForm()
+        {
+            if (string.IsNullOrEmpty(FilesFrom)) return true;
+
+            if (NameFilter != Helper.StringFilterAlwaysTrue)
+            {
+                Console.Write($"'{FilesFromPrefix}' and command-line");
+                Console.WriteLine(" FILE cannot both be assigned.");
+                return false;
+            }
+
+            if (ExclNameFilter != Helper.StringFilterAlwaysFalse)
+            {
+                Console.Write($"'{FilesFromPrefix}' and command-line");
+                Console.WriteLine($" {ExclFilePrefix} cannot both be assigned.");
+                return false;
+            }
+
+            if (ExclDirFilter != Helper.StringFilterAlwaysFalse)
+            {
+                Console.Write($"'{FilesFromPrefix}' and command-line");
+                Console.WriteLine($" {ExclDirPrefix} cannot both be assigned.");
+                return false;
+            }
+
+            if (FilesFrom == "-")
+            {
+                MyGetZipEntires = (zs) =>
+                {
+                    return ReadConsoleLines()
+                    .Select((it) =>
+                    zs.FindEntry(it, ignoreCase: true))
+                    .Where((it) => it >= 0)
+                    .Select((it) => zs[it]);
+                };
+                return true;
+            }
+
+            MyGetZipEntires = (zs) =>
+            {
+                return ReadFileLines(FilesFrom)
+                .Select((it) =>
+                zs.FindEntry(it, ignoreCase: true))
+                .Where((it) => it >= 0)
+                .Select((it) => zs[it]);
+            };
+
+            return true;
+        }
+
         public override bool Parse(IEnumerable<string> args)
         {
             (string[] optOther, string[] otherArgs) = opts.ParseFrom(
@@ -285,6 +288,11 @@ namespace zip2.list
             if (otherArgs.Length > 0)
             {
                 NameFilter = ToNameAnyMatchFilter(otherArgs);
+            }
+
+            if (!ParseFilesForm())
+            {
+                return false;
             }
 
             return true;
