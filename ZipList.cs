@@ -58,7 +58,7 @@ namespace zip2.list
             long original, long compressed)
         {
             if (original < compressed) return Command.NegativeZeroText;
-            if (original < 0) return " 0 ";
+            if (original < 1) return " 0 ";
             compressed = original - compressed;
             compressed *= 100;
             compressed /= original;
@@ -93,8 +93,34 @@ namespace zip2.list
                 ["-t"] = new string[] { "--total=only" },
             }.ToImmutableDictionary<string, string[]>();
 
+        static Func<ZipFile, IEnumerable<ZipEntry>> MyGetZipEntires
+        { get; set; } = (zs) => zs.GetZipEntries();
+
         public override int Invoke()
         {
+            IEnumerable<string> ReadConsoleLines()
+            {
+                var reader = new StreamReader(
+                    Console.OpenStandardInput());
+                while (true)
+                {
+                    var inpLine = reader.ReadLine();
+                    if (inpLine == null) break;
+                    yield return inpLine;
+                }
+            }
+
+            IEnumerable<string> ReadFileLines(string filename)
+            {
+                using var reader = File.OpenText(filename);
+                while (true)
+                {
+                    var inpLine = reader.ReadLine();
+                    if (inpLine == null) break;
+                    yield return inpLine;
+                }
+            }
+
             if (!string.IsNullOrEmpty(FilesFrom))
             {
                 if (NameFilter!= Helper.StringFilterAlwaysTrue)
@@ -104,37 +130,42 @@ namespace zip2.list
                     return 1;
                 }
 
-                string[] filenames = Array.Empty<string>();
+                if (ExclNameFilter != Helper.StringFilterAlwaysFalse)
+                {
+                    Console.Write($"'{FilesFromPrefix}' and command-line ");
+                    Console.WriteLine($" {ExclNameFilter} cannot both be assigned.");
+                    return 1;
+                }
+
+                if (ExclDirFilter != Helper.StringFilterAlwaysFalse)
+                {
+                    Console.Write($"'{FilesFromPrefix}' and command-line ");
+                    Console.WriteLine($" {ExclDirFilter} cannot both be assigned.");
+                    return 1;
+                }
+
                 if (FilesFrom == "-")
                 {
-                    if (!Console.IsInputRedirected)
+                    MyGetZipEntires = (zs) =>
                     {
-                        Console.WriteLine("Only support redir input.");
-                        return 1;
-                    }
-                    filenames = Helper.ReadConsoleAllLines()
-                    .Select((it) => it.Trim())
-                    .Where((it) => it.Length>0)
-                    .Select((it) => Helper.ToStandardDirSep(it))
-                    .Distinct()
-                    .ToArray();
+                        return ReadConsoleLines()
+                        .Select((it) =>
+                        zs.FindEntry(it, ignoreCase: true))
+                        .Where((it) => it >= 0)
+                        .Select((it) => zs[it]);
+                    };
                 }
                 else
                 {
-                    filenames = File
-                    .ReadAllLines(FilesFrom)
-                    .Select((it) => it.Trim())
-                    .Where((it) => it.Length>0)
-                    .Select((it) => Helper.ToStandardDirSep(it))
-                    .Distinct()
-                    .ToArray();
+                    MyGetZipEntires = (zs) =>
+                    {
+                        return ReadFileLines(FilesFrom)
+                        .Select((it) =>
+                        zs.FindEntry(it, ignoreCase: true))
+                        .Where((it) => it >= 0)
+                        .Select((it) => zs[it]);
+                    };
                 }
-                if (filenames.Length==0)
-                {
-                    Console.WriteLine($"Files from '{FilesFromPrefix}' is blank.");
-                    return 1;
-                }
-                NameFilter = ToNameAnyMatchFilter(filenames);
             };
 
             var sum = SumUp.Invoke(zipFilename);
@@ -349,8 +380,8 @@ namespace zip2.list
 
         static private ZipEntrySum sumDefaultInvoke(string filename)
         {
-            return (new ZipFile(File.OpenRead(filename)))
-            .GetZipEntries()
+            return MyGetZipEntires(new ZipFile(
+                File.OpenRead(filename)))
             .Where((it) => NameFilter.Invoke(it.Name))
             .Where((it) => ! ExclNameFilter.Invoke(it.Name))
             .Where((it) => ! ExclDirFilter.Invoke(it.Name))
@@ -378,8 +409,8 @@ namespace zip2.list
                             Opt.Show.Crc = (_) => string.Empty;
                             Opt.Show.CrcTotal = () => string.Empty;
                             return opt.SetValue((filename) =>
-                            (new ZipFile( File.OpenRead(filename)))
-                            .GetZipEntries()
+                            MyGetZipEntires(new ZipFile(
+                                File.OpenRead(filename)))
                             .Where((it) => NameFilter.Invoke(it.Name))
                             .Where((it) => ! ExclNameFilter.Invoke(it.Name))
                             .Where((it) => ! ExclDirFilter.Invoke(it.Name))
@@ -405,8 +436,8 @@ namespace zip2.list
                             Opt.Show.Crc = (_) => string.Empty;
                             Opt.Show.CrcTotal = () => string.Empty;
                             return opt.SetValue((filename) =>
-                            (new ZipFile( File.OpenRead(filename)))
-                            .GetZipEntries()
+                            MyGetZipEntires(new ZipFile(
+                                File.OpenRead(filename)))
                             .Where((it) => NameFilter.Invoke(it.Name))
                             .Where((it) => ! ExclNameFilter.Invoke(it.Name))
                             .Where((it) => ! ExclDirFilter.Invoke(it.Name))
