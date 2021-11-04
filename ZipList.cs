@@ -57,8 +57,8 @@ namespace zip2.list
         internal static string RatioText(
             long original, long compressed)
         {
-            if (original < 1) return " 0 ";
-            if (compressed >= original) return "-0 ";
+            if (original < compressed) return Command.NegativeZeroText;
+            if (original < 0) return " 0 ";
             compressed = original - compressed;
             compressed *= 100;
             compressed /= original;
@@ -543,6 +543,13 @@ namespace zip2.list
                 ReverseEntry = (seq) => seq.Reverse();
             });
 
+        static public string NegativeZeroText { get; private set;} = " 0 ";
+
+        static readonly ParameterSwitch NegativeZero =
+        new ParameterSwitch("negative-zero",
+        help: "show ratio '-0' if \"original<compress\"",
+        whenSwitch: () =>{ NegativeZeroText = "-0 ";} );
+
         static private IParser[] opts = new IParser[] {
             Opt.Show,
             Opt.Hide,
@@ -551,6 +558,7 @@ namespace zip2.list
             (IParser) DateFormat,
             (IParser) CountComma,
             (IParser) CountFormat,
+            (IParser) NegativeZero,
             (IParser) Sort,
             (IParser) SumUp,
             (IParser) Reverse,

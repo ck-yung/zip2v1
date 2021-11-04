@@ -104,6 +104,8 @@ namespace zip2
                     Console.WriteLine($"  {string.Join("  ", switchShortCuts[key])}");
                 }
             }
+            Console.Write(@"Please check ""https:\\github.com\ck-yung\zip2\faq\");
+            Console.WriteLine($"{name}-zip.MD\" for more samples.");
             return 0;
         }
     }
@@ -264,14 +266,15 @@ namespace zip2
     public class ParameterSwitch: ParameterOption<bool>
     {
         Action _whenSwitch = () => {};
-        public ParameterSwitch(string option)
-            : base(option,string.Empty,false,
-            requiredSingleValue:true)
+        public ParameterSwitch(string option, string help = "")
+            : base(option, help, defaultValue: false,
+            requiredSingleValue: true)
         {
         }
 
-        public ParameterSwitch(string option, Action whenSwitch)
-            : base(option,string.Empty,false,
+        public ParameterSwitch(string option, Action whenSwitch,
+        string help = "")
+            : base(option, help, defaultValue: false,
             requiredSingleValue:true)
         {
             _whenSwitch = whenSwitch;

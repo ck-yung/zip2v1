@@ -16,7 +16,7 @@
     <ToolCommandName>zip2</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
     <PackageReleaseNotes>First to NuGet</PackageReleaseNotes>
-    <PackageTags>dir</PackageTags>
+    <PackageTags>zip;dir2</PackageTags>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
     <Copyright>Copyright (c)2021 Yung, Chun Kau</Copyright>
@@ -26,7 +26,7 @@
     <PackageProjectUrl>https://github.com/ck-yung/zip2</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ck-yung/zip2</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageDependencies></PackageDependencies>
+    <PackageDependencies>SharpZipLib.NETStandard</PackageDependencies>
     <PackageDevelopmentDependency></PackageDevelopmentDependency>
   </PropertyGroup>
 

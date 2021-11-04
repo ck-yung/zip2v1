@@ -225,9 +225,9 @@ namespace zip2.create
             new Dictionary<string, string[]>
             {
                 ["-q"] = new string[] { "--quiet"},
-                ["-0"] = new string[] { "--compress-level=0" },
-                ["-1"] = new string[] { "--compress-level=1" },
-                ["-2"] = new string[] { "--compress-level=2" },
+                ["-0"] = new string[] { "--compress-level=fastest" },
+                ["-1"] = new string[] { "--compress-level=normal" },
+                ["-2"] = new string[] { "--compress-level=best" },
             }.ToImmutableDictionary<string, string[]>();
 
         static ImmutableDictionary<string, string> OptionShortCuts =
@@ -269,18 +269,18 @@ namespace zip2.create
 
         static readonly ParameterOption<int> CompressLevel
             = new ParameterOptionSetter<int>("compress-level",
-                "0|1|2  (default 1)", 5,
+                "fastest|normal|best  (default normal)", 5,
                 parse: (val,obj) =>
                 {
                     switch (val)
                     {
-                        case "0":
+                        case "fastest":
                             obj.SetValue(0);
                             return true;
-                        case "1":
+                        case "normal":
                             obj.SetValue(5);
                             return true;
-                        case "2":
+                        case "best":
                             obj.SetValue(9);
                             return true;
                         default:
