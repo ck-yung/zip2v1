@@ -3,8 +3,8 @@
   <PropertyGroup>
     <Title>zip2</Title>
     <PackageId>zip2</PackageId>
-    <PackageVersion>0.9.1</PackageVersion>
-    <Version>0.9.1</Version>
+    <PackageVersion>0.9.2</PackageVersion>
+    <Version>0.9.2</Version>
     <Authors>Yung, Chun Kau</Authors>
     <Description>A command-line tool for zip file operations.</Description>
     <Summary>
@@ -15,8 +15,8 @@
     <Company>https://github.com/ck-yung/zip2</Company>
     <ToolCommandName>zip2</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
-    <PackageReleaseNotes>First to NuGet</PackageReleaseNotes>
-    <PackageTags>zip;dir2</PackageTags>
+    <PackageReleaseNotes>*** TODO ***</PackageReleaseNotes>
+    <PackageTags>zip;extract-zip;create-zip;dir2</PackageTags>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
     <Copyright>Copyright (c)2021 Yung, Chun Kau</Copyright>
@@ -35,8 +35,8 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyVersion>0.9.1</AssemblyVersion>
-    <FileVersion>0.9.1</FileVersion>
+    <AssemblyVersion>0.9.2</AssemblyVersion>
+    <FileVersion>0.9.2</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

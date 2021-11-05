@@ -29,16 +29,20 @@ namespace zip2.restore
                     break;
 
                 case (true, false):
-                    if (Directory.Exists(NewOutputDir))
+                    basicOutputDir = NewOutputDir;
+                    if (basicOutputDir == "-")
+                    {
+                        basicOutputDir = Path.GetFileNameWithoutExtension( zipFilename);
+                    }
+                    if (Directory.Exists(basicOutputDir))
                     {
                         Console.Error.WriteLine(
-                            $"New output dir '{NewOutputDir}' is FOUND!");
+                            $"New output dir '{basicOutputDir}' is FOUND!");
                         return 1;
                     }
-                    Directory.CreateDirectory(NewOutputDir);
-                    WriteConsole($"New output dir {NewOutputDir} is created");
+                    Directory.CreateDirectory(basicOutputDir);
+                    WriteConsole($"New output dir {basicOutputDir} is created");
                     WriteConsole(Environment.NewLine);
-                    basicOutputDir = NewOutputDir;
                     break;
 
                 default:
@@ -248,7 +252,7 @@ namespace zip2.restore
 
         static ParameterOptionString NewOutputDir =
             new ParameterOptionString(
-                "new-dir", help: "NEW_OUTPUT_DIR",
+                "new-dir", help: "NEW_OUTPUT_DIR ( - to use zipfilename)",
                 defaultValue: string.Empty);
 
         Func<string, string> ToOutputFilename = (it) => it;
