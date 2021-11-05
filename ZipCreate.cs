@@ -11,13 +11,12 @@ namespace zip2.create
                 string.IsNullOrEmpty(FilesFrom))
             {
                 case (0, true):
-                    WriteConsole("No file to be backup.");
-                    WriteConsole(Environment.NewLine);
+                    WriteTotalConsole("No file to be backup.");
+                    WriteTotalConsole(Environment.NewLine);
                     return 1;
                 case ( > 0, false):
-                    WriteConsole("Cannot handle files from --files-from");
-                    WriteConsole($"={FilesFrom} and command-line arg FILE.");
-                    WriteConsole(Environment.NewLine);
+                    Console.Write("Cannot handle files from --files-from");
+                    Console.WriteLine($"={FilesFrom} and command-line arg FILE.");
                     return 1;
                 case (0, false):
                     if (FilesFrom == "-")
@@ -45,9 +44,9 @@ namespace zip2.create
 
                     if (FilenamesToBeBackup.Count()==0)
                     {
-                        WriteConsole("No file is found in '--files-from'");
-                        WriteConsole($" '{FilesFrom}'");
-                        WriteConsole(Environment.NewLine);
+                        WriteTotalConsole("No file is found in '--files-from'");
+                        WriteTotalConsole($" '{FilesFrom}'");
+                        WriteTotalConsole(Environment.NewLine);
                         return 1;
                     }
                     break;
@@ -57,8 +56,7 @@ namespace zip2.create
 
             if (File.Exists(zipFilename))
             {
-                WriteConsole($"Output zip file '{zipFilename}' is found!");
-                WriteConsole(Environment.NewLine);
+                Console.WriteLine($"Output zip file '{zipFilename}' is found!");
                 return 1;
             }
 
@@ -81,7 +79,6 @@ namespace zip2.create
                     foreach (var filename in FilenamesToBeBackup)
                     {
                         WriteConsole(filename);
-                        WriteConsole(" ");
                         countAdd += (AddToZip(filename, zs)) ? 1 : 0;
                         WriteConsole(Environment.NewLine);
                     }
@@ -93,19 +90,20 @@ namespace zip2.create
                 switch (countAdd)
                 {
                     case 0:
-                        WriteConsole("No file is stored.");
+                        WriteTotalConsole(" No file is stored.");
                         if (File.Exists(tempPathname))
                         {
                             File.Delete(tempPathname);
                         }
                         break;
                     case 1:
-                        WriteConsole("One file is stored.");
+                        WriteTotalConsole(" One file is stored.");
                         break;
                     default:
-                        WriteConsole($"{countAdd} files are stored.");
+                        WriteTotalConsole($" {countAdd} files are stored.");
                         break;
                 }
+                WriteTotalConsole(Environment.NewLine);
             }
             var temp2Filename = Path.GetRandomFileName() + ".tmp";
             var temp2Pathname = (string.IsNullOrEmpty(zDirThe))
@@ -179,7 +177,7 @@ namespace zip2.create
             {
                 if (!File.Exists(filename))
                 {
-                    WriteConsole("not found");
+                    WriteConsole(" not found");
                     return false;
                 }
 
@@ -207,15 +205,23 @@ namespace zip2.create
                     }
                     catch (Exception ee)
                     {
+                        WriteConsole(" ");
                         WriteConsole(ee.Message);
-                        WriteConsole($" wantSize:{sizeThe} but realSize:{writtenSize}");
                     }
                 }
                 zs.CloseEntry();
+
+                if (sizeThe!=writtenSize)
+                {
+                    WriteConsole($" WantSize:{sizeThe}");
+                    WriteConsole($" but RealSize:{writtenSize} !");
+                    return false;
+                }
                 return true;
             }
             catch (Exception ee)
             {
+                WriteConsole(" ");
                 WriteConsole(ee.Message);
                 return false;
             }
@@ -238,6 +244,7 @@ namespace zip2.create
 
         List<string> FilenamesToBeBackup = new List<string>();
         Action<string> WriteConsole = (msg) => Console.Write(msg);
+        Action<string> WriteTotalConsole = (msg) => Console.Write(msg);
 
         public override bool Parse(IEnumerable<string> args)
         {
@@ -255,6 +262,7 @@ namespace zip2.create
 
             if (Quiet)
             {
+                Console.WriteLine("[dbg] quiet");
                 WriteConsole = (_) => { };
             }
 

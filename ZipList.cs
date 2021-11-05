@@ -20,7 +20,7 @@ namespace zip2.list
             tmp.Append(Opt.Hide.CryptedMarkText(arg.IsCrypted));
             tmp.Append(arg.Name);
             tmp.Append(Environment.NewLine);
-            return Opt.Total.ItemText(tmp.ToString());
+            return Opt.ItemText(tmp.ToString());
         }
 
         static internal string ToConsoleText(this ZipEntrySum arg)
@@ -51,7 +51,7 @@ namespace zip2.list
             tmp.Append(Opt.Hide.CryptedMarkText(arg.AnyCrypted));
             tmp.Append(arg.Name);
             tmp.Append(Environment.NewLine);
-            return Opt.Total.GrandText(tmp.ToString());
+            return Opt.GrandText(tmp.ToString());
         }
 
         internal static string RatioText(
@@ -85,12 +85,11 @@ namespace zip2.list
         static ImmutableDictionary<string, string[]> SwitchShortCuts =
             new Dictionary<string, string[]>
             {
+                ["-q"] = new string[] { "--quiet" },
                 ["-b"] = new string[]
                 {
                     "--hide=ratio,size,date,crypted,count",
-                    "--total=off"
                 },
-                ["-t"] = new string[] { "--total=only" },
             }.ToImmutableDictionary<string, string[]>();
 
         static protected Func<ZipFile, IEnumerable<ZipEntry>> MyGetZipEntires
@@ -301,6 +300,8 @@ namespace zip2.list
                 return false;
             }
 
+            Opt.SetItemTextQuiet(Quiet);
+
             return true;
         }
 
@@ -440,7 +441,7 @@ namespace zip2.list
                             .Select((grp) =>
                             {
                                 Console.Write(
-                                    Opt.Total.ItemText(grp.ToConsoleText()));
+                                    Opt.ItemText(grp.ToConsoleText()));
                                 return grp;
                             })
                             .Aggregate(new ZipEntrySum(
@@ -467,7 +468,7 @@ namespace zip2.list
                             .Select((grp) =>
                             {
                                 Console.Write(
-                                    Opt.Total.ItemText(grp.ToConsoleText()));
+                                    Opt.ItemText(grp.ToConsoleText()));
                                 return grp;
                             })
                             .Aggregate(new ZipEntrySum(
@@ -598,7 +599,7 @@ namespace zip2.list
         static private IParser[] opts = new IParser[] {
             Opt.Show,
             Opt.Hide,
-            Opt.Total,
+            Quiet,
             (IParser) SizeFormat,
             (IParser) DateFormat,
             (IParser) CountComma,
@@ -711,42 +712,18 @@ namespace zip2.list
 
         static internal HideClass Hide = new();
 
-        internal class TotalClass: ParameterOptionSetter<bool>
+        static internal Func<string, string> ItemText { get; private set; }
+        = (it) => it;
+
+        static internal Func<string, string> GrandText { get; private set; }
+        = (it) => it;
+
+        static internal void SetItemTextQuiet(bool quiet)
         {
-            public Func<string,string> ItemText { get; private set;}
-            = (it) => it;
-            public Func<string,string> GrandText { get; private set;}
-            = (it) => it;
-
-            internal TotalClass() : base("total", "only|off",
-            defaultValue: false,
-            parse: (value, obj) => {
-                switch (value)
-                {
-                    case "only":
-                        Total.ItemText = (_) => string.Empty;
-                        Total.GrandText = (it) => it;
-                        return true;
-                    case "off":
-                        Total.ItemText = (it) => it;
-                        Total.GrandText = (_) => string.Empty;
-                        return true;
-                    default:
-                        return false;
-                }
-            })
+            if (quiet)
             {
-            }
-
-            override public IEnumerable<string> ToValues(string arg)
-            {
-                foreach (var token in arg.Substring(Name().Length + 3).Split(','))
-                {
-                    yield return token;
-                }
+                ItemText = (_) => string.Empty;
             }
         }
-
-        static internal TotalClass Total = new();
     }
 }

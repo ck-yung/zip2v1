@@ -13,15 +13,13 @@ namespace zip2.restore
                 string.IsNullOrEmpty(NewOutputDir))
             {
                 case (false, false):
-                    WriteConsole(
-                        "Cannot both assign 'output-dir' and 'new-dir'");
-                    WriteConsole(Environment.NewLine);
+                    Console.WriteLine("Cannot both assign 'output-dir' and 'new-dir'");
                     return 1;
 
                 case (false, true):
                     if (!Directory.Exists(OutputDir))
                     {
-                        Console.Error.WriteLine(
+                        Console.WriteLine(
                             $"Output dir '{OutputDir}' is NOT found!");
                         return 1;
                     }
@@ -36,7 +34,7 @@ namespace zip2.restore
                     }
                     if (Directory.Exists(basicOutputDir))
                     {
-                        Console.Error.WriteLine(
+                        Console.WriteLine(
                             $"New output dir '{basicOutputDir}' is FOUND!");
                         return 1;
                     }
@@ -116,13 +114,13 @@ namespace zip2.restore
             switch (countRestore)
             {
                 case 0:
-                    WriteConsole("No file is restored.");
+                    WriteTotalConsole(" No file is restored.");
                     break;
                 case 1:
-                    WriteConsole("One file is restored.");
+                    WriteTotalConsole(" One file is restored.");
                     break;
                 default:
-                    WriteConsole($"{countRestore} files are restored.");
+                    WriteTotalConsole($" {countRestore} files are restored.");
                     break;
             }
             WriteConsole(Environment.NewLine);
@@ -179,6 +177,7 @@ namespace zip2.restore
         }
 
         Action<string> WriteConsole = (msg) => Console.Write(msg);
+        Action<string> WriteTotalConsole = (msg) => Console.Write(msg);
 
         public override bool Parse(
             IEnumerable<string> args)
