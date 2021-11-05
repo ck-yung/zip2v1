@@ -295,6 +295,12 @@ namespace zip2.list
                 return false;
             }
 
+            if (!ExpandZipFilename())
+            {
+                Console.WriteLine($"'{zipFilename}' is NOT a zip file.");
+                return false;
+            }
+
             return true;
         }
 

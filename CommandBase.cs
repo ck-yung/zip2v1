@@ -33,7 +33,38 @@ namespace zip2
 
             zipFilename = found[0]
             .Substring(zipFilenamePrefix.Length);
+
+            // Expand tilde ~ to %USERPROFILE%
+            if (!File.Exists(zipFilename) &&
+                zipFilename.Length > 2 &&
+                zipFilename[0] == '~' &&
+                zipFilename[1] == Path.DirectorySeparatorChar)
+            {
+                // windows os - user envir - USERPROFILE
+                var homeDir = Environment
+                    .GetEnvironmentVariable("USERPROFILE");
+                if (homeDir != null && Directory.Exists(homeDir))
+                {
+                    zipFilename = Path.Combine(homeDir, zipFilename[2..]);
+                }
+            }
+
             return (true, others);
+        }
+
+        protected bool ExpandZipFilename()
+        {
+            if (File.Exists(zipFilename)) return true;
+            var dirThe = Path.GetDirectoryName(zipFilename);
+            if (!Directory.Exists(dirThe)) return false;
+            var wildName = Path.GetFileName(zipFilename);
+            var filenames = Directory.GetFiles(dirThe, wildName);
+            if (filenames.Length == 1)
+            {
+                zipFilename = filenames[0];
+                return true;
+            }
+            return false;
         }
 
         static public readonly ParameterSwitch Quiet = new ParameterSwitch("quiet");

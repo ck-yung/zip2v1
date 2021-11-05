@@ -246,15 +246,18 @@ namespace zip2.create
                 Helper.ExpandToOptions(args,
                 switchShortcuts: SwitchShortCuts,
                 optionShortcuts: OptionShortCuts));
+
             FilenamesToBeBackup.AddRange(
                 filenamesToBeBackup
                 .Select((it) => it.Trim())
                 .Where((it) => it.Length > 0)
                 .Distinct());
+
             if (Quiet)
             {
                 WriteConsole = (_) => { };
             }
+
             return true;
         }
 

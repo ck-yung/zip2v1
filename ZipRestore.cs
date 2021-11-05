@@ -215,6 +215,7 @@ namespace zip2.restore
                 .Where((it) => it.Length > 0)
                 .Distinct()
                 .ToArray();
+
             if (optExclDir.Length > 0)
             {
                 ExclDirFilter = ToDirPartAnyMatch(optExclDir);
@@ -239,6 +240,12 @@ namespace zip2.restore
 
             if (!ParseFilesForm())
             {
+                return false;
+            }
+
+            if (!ExpandZipFilename())
+            {
+                Console.WriteLine($"'{zipFilename}' is NOT a zip file.");
                 return false;
             }
 
