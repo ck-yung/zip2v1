@@ -39,8 +39,7 @@ namespace zip2.restore
                         return 1;
                     }
                     Directory.CreateDirectory(basicOutputDir);
-                    WriteConsole($"New output dir {basicOutputDir} is created");
-                    WriteConsole(Environment.NewLine);
+                    ItemPrintLine($"New output dir {basicOutputDir} is created");
                     break;
 
                 default:
@@ -82,7 +81,7 @@ namespace zip2.restore
                 .Select((it) =>
                 {
                     bool rtn = false;
-                    WriteConsole(it.Entry.Name);
+                    ItemPrint(it.Entry.Name);
                     try
                     {
                         string tmpFilename = it.TargetFilename + "." + Guid.NewGuid(
@@ -103,10 +102,10 @@ namespace zip2.restore
                     }
                     catch (Exception ee)
                     {
-                        WriteConsole(" ");
-                        WriteConsole(ee.ToString());
+                        ItemPrint(" ");
+                        ItemPrint(ee.ToString());
                     }
-                    WriteConsole(Environment.NewLine);
+                    ItemPrint(Environment.NewLine);
                     return rtn;
                 })
                 .Where((it) => it)
@@ -114,16 +113,15 @@ namespace zip2.restore
             switch (countRestore)
             {
                 case 0:
-                    WriteTotalConsole(" No file is restored.");
+                    TotalPrintLine(" No file is restored.");
                     break;
                 case 1:
-                    WriteTotalConsole(" One file is restored.");
+                    TotalPrintLine(" One file is restored.");
                     break;
                 default:
-                    WriteTotalConsole($" {countRestore} files are restored.");
+                    TotalPrintLine($" {countRestore} files are restored.");
                     break;
             }
-            WriteConsole(Environment.NewLine);
 
             return 0;
         }
@@ -159,7 +157,7 @@ namespace zip2.restore
             }
             else
             {
-                WriteConsole($" -> {theFilename}");
+                ItemPrint($" -> {theFilename}");
             }
         }
 
@@ -175,9 +173,6 @@ namespace zip2.restore
                     Console.WriteLine("DIRNAME[,DORWILD] ..]");
                 });
         }
-
-        Action<string> WriteConsole = (msg) => Console.Write(msg);
-        Action<string> WriteTotalConsole = (msg) => Console.Write(msg);
 
         public override bool Parse(
             IEnumerable<string> args)
@@ -232,11 +227,6 @@ namespace zip2.restore
                 NameFilter = ToNameAnyMatchFilter(otherArgs);
             }
 
-            if (Quiet)
-            {
-                WriteConsole = (_) => { };
-            }
-
             if (!ParseFilesForm())
             {
                 return false;
@@ -282,6 +272,7 @@ namespace zip2.restore
         static ImmutableDictionary<string, string> OptionShortCuts =
             new Dictionary<string, string>
             {
+                [QuietShortcut] = QuietText,
                 ["-T"] = FilesFromPrefix,
                 ["-o"] = "--output-dir=",
                 ["-n"] = "--new-dir=",
@@ -292,6 +283,7 @@ namespace zip2.restore
         static IParser[] opts =
         {
             Quiet,
+            TotalOff,
             FilesFrom,
             SkipOldPath,
             OutputDir,

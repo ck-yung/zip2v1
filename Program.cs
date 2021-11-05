@@ -46,7 +46,7 @@ namespace zip2
         OptionShortcuts =
         new Dictionary<string, string>()
         {
-            ["-q"] = "--quiet",
+            [CommandBase.QuietShortcut] = CommandBase.QuietText,
             ["-v"] = "--version",
             ["-h"] = "--help",
             ["-?"] = "--help",

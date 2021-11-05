@@ -11,8 +11,7 @@ namespace zip2.create
                 string.IsNullOrEmpty(FilesFrom))
             {
                 case (0, true):
-                    WriteTotalConsole("No file to be backup.");
-                    WriteTotalConsole(Environment.NewLine);
+                    TotalPrintLine("No file to be backup.");
                     return 1;
                 case ( > 0, false):
                     Console.Write("Cannot handle files from --files-from");
@@ -44,9 +43,8 @@ namespace zip2.create
 
                     if (FilenamesToBeBackup.Count()==0)
                     {
-                        WriteTotalConsole("No file is found in '--files-from'");
-                        WriteTotalConsole($" '{FilesFrom}'");
-                        WriteTotalConsole(Environment.NewLine);
+                        TotalPrintLine(
+                            $"No file is found in (files-from) '{FilesFrom}'");
                         return 1;
                     }
                     break;
@@ -78,9 +76,9 @@ namespace zip2.create
 
                     foreach (var filename in FilenamesToBeBackup)
                     {
-                        WriteConsole(filename);
+                        ItemPrint(filename);
                         countAdd += (AddToZip(filename, zs)) ? 1 : 0;
-                        WriteConsole(Environment.NewLine);
+                        ItemPrint(Environment.NewLine);
                     }
 
                     zs.Finish();
@@ -90,21 +88,21 @@ namespace zip2.create
                 switch (countAdd)
                 {
                     case 0:
-                        WriteTotalConsole(" No file is stored.");
+                        TotalPrintLine(" No file is stored.");
                         if (File.Exists(tempPathname))
                         {
                             File.Delete(tempPathname);
                         }
                         break;
                     case 1:
-                        WriteTotalConsole(" One file is stored.");
+                        TotalPrintLine(" One file is stored.");
                         break;
                     default:
-                        WriteTotalConsole($" {countAdd} files are stored.");
+                        TotalPrintLine($" {countAdd} files are stored.");
                         break;
                 }
-                WriteTotalConsole(Environment.NewLine);
             }
+
             var temp2Filename = Path.GetRandomFileName() + ".tmp";
             var temp2Pathname = (string.IsNullOrEmpty(zDirThe))
                 ? temp2Filename : Path.Join(zDirThe, temp2Filename);
@@ -166,8 +164,6 @@ namespace zip2.create
                     break;
             }
 
-            WriteConsole(Environment.NewLine);
-
             return 0;
         }
 
@@ -177,7 +173,7 @@ namespace zip2.create
             {
                 if (!File.Exists(filename))
                 {
-                    WriteConsole(" not found");
+                    ItemPrint(" not found");
                     return false;
                 }
 
@@ -205,24 +201,24 @@ namespace zip2.create
                     }
                     catch (Exception ee)
                     {
-                        WriteConsole(" ");
-                        WriteConsole(ee.Message);
+                        ItemPrint(" ");
+                        ItemPrint(ee.Message);
                     }
                 }
                 zs.CloseEntry();
 
                 if (sizeThe!=writtenSize)
                 {
-                    WriteConsole($" WantSize:{sizeThe}");
-                    WriteConsole($" but RealSize:{writtenSize} !");
+                    ItemPrint($" WantSize:{sizeThe}");
+                    ItemPrint($" but RealSize:{writtenSize} !");
                     return false;
                 }
                 return true;
             }
             catch (Exception ee)
             {
-                WriteConsole(" ");
-                WriteConsole(ee.Message);
+                ItemPrint(" ");
+                ItemPrint(ee.Message);
                 return false;
             }
         }
@@ -230,10 +226,10 @@ namespace zip2.create
         static ImmutableDictionary<string, string[]> SwitchShortCuts =
             new Dictionary<string, string[]>
             {
-                ["-q"] = new string[] { "--quiet"},
-                ["-0"] = new string[] { "--compress-level=fastest" },
-                ["-1"] = new string[] { "--compress-level=normal" },
-                ["-2"] = new string[] { "--compress-level=best" },
+                [QuietShortcut] = new string[] { QuietText },
+                ["-0"] = new string[] { "--compress-level=fast" },
+                ["-1"] = new string[] { "--compress-level=good" },
+                ["-2"] = new string[] { "--compress-level=better" },
             }.ToImmutableDictionary<string, string[]>();
 
         static ImmutableDictionary<string, string> OptionShortCuts =
@@ -243,8 +239,6 @@ namespace zip2.create
             }.ToImmutableDictionary<string, string>();
 
         List<string> FilenamesToBeBackup = new List<string>();
-        Action<string> WriteConsole = (msg) => Console.Write(msg);
-        Action<string> WriteTotalConsole = (msg) => Console.Write(msg);
 
         public override bool Parse(IEnumerable<string> args)
         {
@@ -260,12 +254,6 @@ namespace zip2.create
                 .Where((it) => it.Length > 0)
                 .Distinct());
 
-            if (Quiet)
-            {
-                Console.WriteLine("[dbg] quiet");
-                WriteConsole = (_) => { };
-            }
-
             return true;
         }
 
@@ -280,18 +268,18 @@ namespace zip2.create
 
         static readonly ParameterOption<int> CompressLevel
             = new ParameterOptionSetter<int>("compress-level",
-                "fastest|normal|best  (default normal)", 5,
+                "fast|good|better  (default good)", 5,
                 parse: (val,obj) =>
                 {
                     switch (val)
                     {
-                        case "fastest":
+                        case "fast":
                             obj.SetValue(0);
                             return true;
-                        case "normal":
+                        case "good":
                             obj.SetValue(5);
                             return true;
-                        case "best":
+                        case "better":
                             obj.SetValue(9);
                             return true;
                         default:
@@ -302,6 +290,7 @@ namespace zip2.create
         static IParser[] opts =
         {
             Quiet,
+            TotalOff,
             FilesFrom,
             (IParser) CompressLevel,
         };

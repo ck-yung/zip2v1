@@ -67,7 +67,27 @@ namespace zip2
             return false;
         }
 
-        static public readonly ParameterSwitch Quiet = new ParameterSwitch("quiet");
+        static public readonly string QuietText = "--quiet";
+        static public readonly string QuietShortcut = "-q";
+        static public Action<string> ItemPrint
+        { get; private set; } = (it) => Console.Write(it);
+        static public Action<string> ItemPrintLine
+        { get; private set; } = (it) => Console.WriteLine(it);
+        static public readonly ParameterSwitch Quiet =
+            new ParameterSwitch("quiet", whenSwitch: () =>
+            {
+                ItemPrint = (_) => { };
+                ItemPrintLine = (_) => { };
+            });
+
+        static public readonly string TotalOffText = "--total-off";
+        static public Action<string> TotalPrintLine
+        { get; private set; } = (it) => Console.WriteLine(it);
+        static public readonly ParameterSwitch TotalOff =
+            new ParameterSwitch("total-off", whenSwitch: () =>
+            {
+                TotalPrintLine = (_) => { };
+            });
 
         static public readonly string FilesFromText = "files-from";
         static public readonly string FilesFromPrefix = $"--{FilesFromText}=";

@@ -19,8 +19,7 @@ namespace zip2.list
                 Command.DateFormat.Invoke(arg.DateTime)));
             tmp.Append(Opt.Hide.CryptedMarkText(arg.IsCrypted));
             tmp.Append(arg.Name);
-            tmp.Append(Environment.NewLine);
-            return Opt.ItemText(tmp.ToString());
+            return tmp.ToString();
         }
 
         static internal string ToConsoleText(this ZipEntrySum arg)
@@ -50,8 +49,7 @@ namespace zip2.list
                 Command.CountFormat.Invoke(arg.Count)));
             tmp.Append(Opt.Hide.CryptedMarkText(arg.AnyCrypted));
             tmp.Append(arg.Name);
-            tmp.Append(Environment.NewLine);
-            return Opt.GrandText(tmp.ToString());
+            return tmp.ToString();
         }
 
         internal static string RatioText(
@@ -85,10 +83,11 @@ namespace zip2.list
         static ImmutableDictionary<string, string[]> SwitchShortCuts =
             new Dictionary<string, string[]>
             {
-                ["-q"] = new string[] { "--quiet" },
+                [QuietShortcut] = new string[] { QuietText },
                 ["-b"] = new string[]
                 {
                     "--hide=ratio,size,date,crypted,count",
+                    "--total-off",
                 },
             }.ToImmutableDictionary<string, string[]>();
 
@@ -98,7 +97,7 @@ namespace zip2.list
         public override int Invoke()
         {
             var sum = SumUp.Invoke(zipFilename);
-            Console.Write(sum.ToConsoleText());
+            TotalPrintLine(sum.ToConsoleText());
             return 0;
         }
 
@@ -300,7 +299,11 @@ namespace zip2.list
                 return false;
             }
 
-            Opt.SetItemTextQuiet(Quiet);
+            if (Quiet && TotalOff)
+            {
+                Console.WriteLine("--quiet and --total-off cannot be both assigned!");
+                return false;
+            }
 
             return true;
         }
@@ -404,7 +407,7 @@ namespace zip2.list
             .Invoke((seq) => ReverseEntry(seq))
             .Select((itm) =>
             {
-                Console.Write(itm.ToConsoleText());
+                ItemPrintLine(itm.ToConsoleText());
                 return itm;
             })
             .Aggregate( new ZipEntrySum( Path.GetFileName(
@@ -440,8 +443,7 @@ namespace zip2.list
                             .Invoke((seq) => Reverse!.Invoke(seq))
                             .Select((grp) =>
                             {
-                                Console.Write(
-                                    Opt.ItemText(grp.ToConsoleText()));
+                                ItemPrintLine(grp.ToConsoleText());
                                 return grp;
                             })
                             .Aggregate(new ZipEntrySum(
@@ -467,8 +469,7 @@ namespace zip2.list
                             .Invoke((seq) => Reverse!.Invoke(seq))
                             .Select((grp) =>
                             {
-                                Console.Write(
-                                    Opt.ItemText(grp.ToConsoleText()));
+                                ItemPrintLine(grp.ToConsoleText());
                                 return grp;
                             })
                             .Aggregate(new ZipEntrySum(
@@ -600,6 +601,7 @@ namespace zip2.list
             Opt.Show,
             Opt.Hide,
             Quiet,
+            TotalOff,
             (IParser) SizeFormat,
             (IParser) DateFormat,
             (IParser) CountComma,
@@ -711,19 +713,5 @@ namespace zip2.list
         }
 
         static internal HideClass Hide = new();
-
-        static internal Func<string, string> ItemText { get; private set; }
-        = (it) => it;
-
-        static internal Func<string, string> GrandText { get; private set; }
-        = (it) => it;
-
-        static internal void SetItemTextQuiet(bool quiet)
-        {
-            if (quiet)
-            {
-                ItemText = (_) => string.Empty;
-            }
-        }
     }
 }
