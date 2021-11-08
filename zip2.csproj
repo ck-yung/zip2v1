@@ -8,16 +8,14 @@
     <Authors>Yung, Chun Kau</Authors>
     <Description>A command-line tool for zip file operations.</Description>
     <Summary>
-       The tool implements create, list and restore zip file. C# source https://github.com/ck-yung/zip2.
+       Create|List|Extract Zip File. Source https://github.com/ck-yung/zip2.
    </Summary>
     <PackageTags>zip; create zip; extract zip</PackageTags>
     <PackAsTool>true</PackAsTool>
     <Company>https://github.com/ck-yung/zip2</Company>
     <ToolCommandName>zip2</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
-    <PackageReleaseNotes>*** TODO ***</PackageReleaseNotes>
-    <PackageTags>zip;extract-zip;create-zip;dir2</PackageTags>
-    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>TODO</PackageReleaseNotes>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
     <Copyright>Copyright (c)2021 Yung, Chun Kau</Copyright>
     <PackageLicense>GPL-3.0 License</PackageLicense>

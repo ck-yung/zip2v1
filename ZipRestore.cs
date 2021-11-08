@@ -67,7 +67,12 @@ namespace zip2.restore
                     break;
             }
 
+            var dirMovePriorTo = Path.Join(basicOutputDir,
+                "zip2prior "
+                + DateTime.Now.ToString("s").Replace(":","-")
+                + "." + DateTime.Now.ToString("fff"));
             var zFile = new ZipFile(File.OpenRead(zipFilename));
+            var tmpExtThe = "." + Guid.NewGuid().ToString("N");
             var countRestore = MyGetZipEntires(zFile)
                 .Where((it) => NameFilter.Invoke(it.Name))
                 .Where((it) => !ExclNameFilter.Invoke(it.Name))
@@ -84,8 +89,7 @@ namespace zip2.restore
                     ItemPrint(it.Entry.Name);
                     try
                     {
-                        string tmpFilename = it.TargetFilename + "." + Guid.NewGuid(
-                            ).ToString("N");
+                        string tmpFilename = it.TargetFilename + tmpExtThe;
                         string? dirThe = Path.GetDirectoryName(tmpFilename);
                         if (!string.IsNullOrEmpty(dirThe) && !Directory.Exists(dirThe))
                         {
@@ -97,7 +101,12 @@ namespace zip2.restore
                         {
                             inpStream.CopyTo(streamThe, 32 * 1024);
                         }
-                        ForceRename(tmpFilename,it.TargetFilename,it.Entry.DateTime);
+
+                        ForceRename(
+                            oldFilename:tmpFilename,
+                            moveOldToDir:dirMovePriorTo,
+                            targetFilename:it.TargetFilename,
+                            originalTimestamp:it.Entry.DateTime);
                         rtn = true;
                     }
                     catch (Exception ee)
@@ -129,36 +138,27 @@ namespace zip2.restore
         static Action<string, DateTime> SetTimestamp =
             (filename, timestamp) => File.SetLastWriteTime(filename, timestamp);
 
-        void ForceRename( string oldFileame, string targetFilename,
+        void ForceRename( string oldFilename,
+            string moveOldToDir,
+            string targetFilename,
             DateTime originalTimestamp)
         {
-            int cnt = 0;
             var theFilename = targetFilename;
-            var dir2 = Path.GetDirectoryName(theFilename);
-            var dirWithFileName = (string.IsNullOrEmpty(dir2))
-                ? Path.GetFileNameWithoutExtension(theFilename)
-                : Path.Join(dir2, Path.GetFileNameWithoutExtension(theFilename));
-            var extThe = Path.GetExtension(theFilename);
 
-            while (File.Exists(theFilename))
+            if (File.Exists(theFilename))
             {
-                cnt += 1;
-                theFilename = $"{dirWithFileName} ({cnt}){extThe}";
-            }
-
-            (new FileInfo(oldFileame)).MoveTo(theFilename);
-
-            if (cnt==0)
-            {
-                if (File.Exists(targetFilename))
+                var moveOldToPathname = Path.Join(moveOldToDir,
+                    targetFilename);
+                var dir2 = Path.GetDirectoryName(moveOldToPathname);
+                if (!string.IsNullOrEmpty(dir2) && !Directory.Exists(dir2))
                 {
-                    SetTimestamp(targetFilename, originalTimestamp);
+                    Directory.CreateDirectory(dir2);
                 }
+                (new FileInfo(theFilename)).MoveTo(moveOldToPathname);
             }
-            else
-            {
-                ItemPrint($" -> {theFilename}");
-            }
+
+            (new FileInfo(oldFilename)).MoveTo(theFilename);
+            SetTimestamp(theFilename, originalTimestamp);
         }
 
         public override int SayHelp()
