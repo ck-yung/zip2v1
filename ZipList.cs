@@ -621,6 +621,7 @@ namespace zip2.list
         = (_) => string.Empty;
         public Func<string> CrcTotal { get; set; }
         = () => string.Empty;
+        HashSet<string> CrcList = new();
         public Func<string,string> CompressedText { get; private set;}
         = (_) => string.Empty;
 
@@ -632,9 +633,23 @@ namespace zip2.list
                     switch (arg)
                     {
                         case "crc":
-                            Show.Crc = (arg) => arg.ToString("X08") + " ";
-                            // ................... 123456789
-                            Show.CrcTotal = () => "         ";
+                            Show.Crc = (arg) =>
+                            {
+                                var crcThis = arg.ToString("X08");
+                                Show.CrcList.Add(crcThis);
+                                return crcThis + " ";
+                            };
+                            Show.CrcTotal = () =>
+                            {
+                                var crcGrand = string.Join("|",
+                                    Show.CrcList.ToArray());
+                                var crc32 = new ICSharpCode.SharpZipLib
+                                .Checksum.Crc32();
+                                crc32.Reset();
+                                crc32.Update(Encoding.ASCII.GetBytes(crcGrand));
+                                var crcThis = crc32.Value.ToString("X08");
+                                return crcThis + " ";
+                            };
                             break;
                         case "compress":
                             Show.CompressedText = (arg) => arg;
