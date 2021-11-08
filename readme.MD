@@ -1,6 +1,6 @@
 # zip2
 
-version 0.9.XX
+version 0.9.2
 
 ### Syntax Samples
 
@@ -51,4 +51,4 @@ Yung, Chun Kau
 
 <yung.chun.kau@gmail.com>
 
-2021 Nov ***TODO***
+2021-11-08

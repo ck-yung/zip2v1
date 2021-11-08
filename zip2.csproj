@@ -10,12 +10,12 @@
     <Summary>
        Create|List|Extract Zip File. Source https://github.com/ck-yung/zip2.
    </Summary>
-    <PackageTags>zip; create zip; extract zip</PackageTags>
+    <PackageTags>zip; backup</PackageTags>
     <PackAsTool>true</PackAsTool>
     <Company>https://github.com/ck-yung/zip2</Company>
     <ToolCommandName>zip2</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
-    <PackageReleaseNotes>TODO</PackageReleaseNotes>
+    <PackageReleaseNotes>Pulic release of dotnet 6</PackageReleaseNotes>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
     <Copyright>Copyright (c)2021 Yung, Chun Kau</Copyright>
     <PackageLicense>GPL-3.0 License</PackageLicense>
