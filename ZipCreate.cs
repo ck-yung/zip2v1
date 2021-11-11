@@ -8,18 +8,42 @@ namespace zip2.create
         public override int Invoke()
         {
             switch (string.IsNullOrEmpty(EncryptPassword),
-                string.IsNullOrEmpty(PasswordFrom))
+                string.IsNullOrEmpty(PasswordFrom),
+                string.IsNullOrEmpty(PasswordFromRaw))
             {
-                case (false, false):
-                    TotalPrintLine("'--password=' and '--password-from=' cannot be both assigned.");
-                    return 1;
-                case (true, false):
+                case (true, false, true):
                     using (var inpFs = File.OpenText(PasswordFrom))
                     {
                         var textThe = inpFs.ReadToEnd().Trim();
+                        if (string.IsNullOrEmpty(textThe))
+                        {
+                            TotalPrintLine($"File '{PasswordFrom}' contains blank content!");
+                            return 1;
+                        }
                         ((IParser)EncryptPassword).Parse(textThe);
                     }
                     break;
+                case (true, true, false):
+                    using (var inpFs = File.OpenRead(PasswordFromRaw))
+                    {
+                        var readSize = new FileInfo(PasswordFromRaw).Length;
+                        if (1 > readSize)
+                        {
+                            TotalPrintLine($"File '{PasswordFromRaw}' is empty!");
+                            return 1;
+                        }
+                        var buf = new byte[readSize];
+                        inpFs.Read(buf);
+                        var textThe = System.Text.Encoding.UTF8.GetString(buf);
+                        ((IParser)EncryptPassword).Parse(textThe);
+                    }
+                    break;
+                case (false, false, _):
+                case (false, _, false):
+                case (_, false, false):
+                    TotalPrintLine(
+                        " Only one of '--password', '--password-from' and '--password-from-raw' can be assigned.");
+                    return 1;
                 default:
                     break;
             }
@@ -364,6 +388,7 @@ namespace zip2.create
             CompressLevel,
             EncryptPassword,
             PasswordFrom,
+            PasswordFromRaw,
         };
     }
 }

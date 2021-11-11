@@ -114,6 +114,16 @@ namespace zip2
                     return true;
                 });
 
+        static public readonly ParameterOption<string> PasswordFromRaw
+            = new ParameterOptionSetter<string>("password-from-raw",
+                help: "FILENAME",
+                defaultValue: string.Empty,
+                parse: (val, obj) =>
+                {
+                    obj.SetValue(val);
+                    return true;
+                });
+
         static public readonly string TotalOffText = "--total-off";
         static public Action<string> TotalPrintLine
         { get; private set; } = (it) => Console.WriteLine(it);
@@ -127,7 +137,7 @@ namespace zip2
         static public readonly string FilesFromPrefix = $"--{FilesFromText}=";
         static public readonly ParameterOptionString FilesFrom =
             new ParameterOptionString(
-                FilesFromText, "FILENAME_OF_FILE_LIST  (stdin if -)",
+                FilesFromText, "FILENAME (stdin if -)",
                 defaultValue: string.Empty);
 
         public int SayHelp( string name
@@ -153,7 +163,7 @@ namespace zip2
                 {
                     prefix = $"--{opt.Name()} ";
                 }
-                Console.Write($"  {prefix,19}");
+                Console.Write($" {prefix,20}");
                 if (!string.IsNullOrEmpty(opt.OnlineHelp()))
                 {
                     Console.Write(opt.OnlineHelp());

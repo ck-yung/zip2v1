@@ -316,7 +316,7 @@ namespace zip2.list
                     Console.Write($"  {ExclFilePrefix,19}");
                     Console.WriteLine("FILENAME[,FILEWILD ..]");
                     Console.Write($"  {ExclDirPrefix,19}");
-                    Console.WriteLine("DIRNAME[,DORWILD] ..]");
+                    Console.WriteLine("DIRNAME[,DIRWILD] ..]");
                 });
         }
 

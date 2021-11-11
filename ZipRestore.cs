@@ -8,18 +8,42 @@ namespace zip2.restore
         public override int Invoke()
         {
             switch (string.IsNullOrEmpty(Password),
-                string.IsNullOrEmpty(PasswordFrom))
+                string.IsNullOrEmpty(PasswordFrom),
+                string.IsNullOrEmpty(PasswordFromRaw))
             {
-                case (false, false):
-                    TotalPrintLine("'--password=' and '--password-from=' cannot be both assigned.");
-                    return 1;
-                case (true, false):
+                case (true, false, true):
                     using (var inpFs = File.OpenText(PasswordFrom))
                     {
                         var textThe = inpFs.ReadToEnd().Trim();
+                        if (string.IsNullOrEmpty(textThe))
+                        {
+                            TotalPrintLine($"File '{PasswordFrom}' contains blank content!");
+                            return 1;
+                        }
                         ((IParser)Password).Parse(textThe);
                     }
                     break;
+                case (true, true, false):
+                    using (var inpFs = File.OpenRead(PasswordFromRaw))
+                    {
+                        var readSize = new FileInfo(PasswordFromRaw).Length;
+                        if (1 > readSize)
+                        {
+                            TotalPrintLine($"File '{PasswordFromRaw}' is empty!");
+                            return 1;
+                        }
+                        var buf = new byte[readSize];
+                        inpFs.Read(buf);
+                        var textThe = System.Text.Encoding.UTF8.GetString(buf);
+                        ((IParser)Password).Parse(textThe);
+                    }
+                    break;
+                case (false, false, _):
+                case (false, _, false):
+                case (_, false, false):
+                    TotalPrintLine(
+                        " Only one of '--password', '--password-from' and '--password-from-raw' can be assigned.");
+                    return 1;
                 default:
                     break;
             }
@@ -108,9 +132,10 @@ namespace zip2.restore
                 {
                     bool rtn = false;
                     ItemPrint(it.Entry.Name);
+                    string tmpFilename = "?";
                     try
                     {
-                        string tmpFilename = it.TargetFilename + tmpExtThe;
+                        tmpFilename = it.TargetFilename + tmpExtThe;
                         string? dirThe = Path.GetDirectoryName(tmpFilename);
                         if (!string.IsNullOrEmpty(dirThe) && !Directory.Exists(dirThe))
                         {
@@ -128,12 +153,15 @@ namespace zip2.restore
                             moveOldToDir:dirMovePriorTo,
                             targetFilename:it.TargetFilename,
                             originalTimestamp:it.Entry.DateTime);
+                        tmpFilename = "?";
                         rtn = true;
                     }
                     catch (ZipException zipEe)
                     {
                         ItemPrint(" ");
                         ItemPrint(zipEe.Message);
+                        if (File.Exists(tmpFilename))
+                            File.Delete(tmpFilename);
                     }
                     catch (Exception ee)
                     {
@@ -148,6 +176,8 @@ namespace zip2.restore
                         {
                             ItemPrint(ee.Message);
                         }
+                        if (File.Exists(tmpFilename))
+                            File.Delete(tmpFilename);
                     }
                     ItemPrint(Environment.NewLine);
                     return rtn;
@@ -230,7 +260,7 @@ namespace zip2.restore
                     Console.Write($"  {ExclFilePrefix,19}");
                     Console.WriteLine("FILENAME[,FILEWILD ..]");
                     Console.Write($"  {ExclDirPrefix,19}");
-                    Console.WriteLine("DIRNAME[,DORWILD] ..]");
+                    Console.WriteLine("DIRNAME[,DIRWILD] ..]");
                 });
         }
 
@@ -351,6 +381,7 @@ namespace zip2.restore
             NotUpdateLastWriteTime,
             Password,
             PasswordFrom,
+            PasswordFromRaw,
         };
     }
 }
