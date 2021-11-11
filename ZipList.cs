@@ -14,7 +14,7 @@ namespace zip2.list
                 Command.SizeFormat.Invoke(arg.Size)));
             tmp.Append(Opt.Show.CompressedText(
                 Command.SizeFormat.Invoke(arg.CompressedSize)));
-            tmp.Append(Opt.Show.Crc(arg.Crc));
+            tmp.Append(Opt.Show.CrcText(arg.Crc.ToString("X08")+" "));
             tmp.Append(Opt.Hide.DateText(
                 Command.DateFormat.Invoke(arg.DateTime)));
             tmp.Append(Opt.Hide.CryptedMarkText(arg.IsCrypted));
@@ -33,8 +33,7 @@ namespace zip2.list
             tmp.Append(Opt.Show.CompressedText(
                 Command.SizeFormat.Invoke(arg.CompressedSize)));
 
-            tmp.Append(Opt.Show.CrcTotal());
-
+            tmp.Append(Opt.Show.CrcText(arg.CrcText()+" "));
             var dateText = Opt.Hide.DateText(
                 Command.DateFormat.Invoke(arg.DateTime));
             if (!string.IsNullOrEmpty(dateText))
@@ -415,6 +414,23 @@ namespace zip2.list
             (acc,itm) => acc.AddWith(itm));
         }
 
+        static private
+            Func<IEnumerable<ZipEntrySum>, IEnumerable<ZipEntrySum>>
+            SortSum = Seq<ZipEntrySum>.NoChange;
+        static Func<IEnumerable<ZipEntry>, IEnumerable<ZipEntry>>
+            ReverseEntry = Seq<ZipEntry>.NoChange;
+        static readonly ParameterFunctionSwitch<
+            IEnumerable<ZipEntrySum>, IEnumerable<ZipEntrySum>> Reverse =
+            new ParameterFunctionSwitch<
+                IEnumerable<ZipEntrySum>, IEnumerable<ZipEntrySum>>(
+            "reverse", help: string.Empty,
+            defaultValue: Seq<ZipEntrySum>.NoChange,
+            altValue: (seq) => seq.Reverse(),
+            whenSwitch: () =>
+            {
+                ReverseEntry = (seq) => seq.Reverse();
+            });
+
         static private ParameterFunction<string,ZipEntrySum> SumUp =
             new ParameterFunctionSetter<string,ZipEntrySum>(
                 option:"sum", help:"ext|dir",
@@ -424,8 +440,6 @@ namespace zip2.list
                     switch (val)
                     {
                         case "ext":
-                            Opt.Show.Crc = (_) => string.Empty;
-                            Opt.Show.CrcTotal = () => string.Empty;
                             return opt.SetValue((filename) =>
                             MyGetZipEntires(new ZipFile(
                                 File.OpenRead(filename)))
@@ -439,8 +453,8 @@ namespace zip2.list
                                     ? "*NoExt*" : grp.Key),
                                     (ZipEntrySum acc, ZipEntry itm) =>
                                     acc.AddWith(itm)))
-                            .Invoke((seq) => SortSum!.Invoke(seq))
-                            .Invoke((seq) => Reverse!.Invoke(seq))
+                            .Invoke((seq) => SortSum.Invoke(seq))
+                            .Invoke((seq) => Reverse.Invoke(seq))
                             .Select((grp) =>
                             {
                                 ItemPrintLine(grp.ToConsoleText());
@@ -450,8 +464,6 @@ namespace zip2.list
                                 Path.GetFileName(filename)),
                                 (acc, itm) => acc.AddWith(itm)));
                         case "dir":
-                            Opt.Show.Crc = (_) => string.Empty;
-                            Opt.Show.CrcTotal = () => string.Empty;
                             return opt.SetValue((filename) =>
                             MyGetZipEntires(new ZipFile(
                                 File.OpenRead(filename)))
@@ -465,8 +477,8 @@ namespace zip2.list
                                     ? "*NoExt*" : grp.Key),
                                     (ZipEntrySum acc, ZipEntry itm) =>
                                     acc.AddWith(itm)))
-                            .Invoke((seq) => SortSum!.Invoke(seq))
-                            .Invoke((seq) => Reverse!.Invoke(seq))
+                            .Invoke((seq) => SortSum.Invoke(seq))
+                            .Invoke((seq) => Reverse.Invoke(seq))
                             .Select((grp) =>
                             {
                                 ItemPrintLine(grp.ToConsoleText());
@@ -479,10 +491,6 @@ namespace zip2.list
                             return false;
                     }
                 });
-
-        static private
-            Func<IEnumerable<ZipEntrySum>,IEnumerable<ZipEntrySum>>
-            SortSum = Seq<ZipEntrySum>.NoChange;
 
         static private ParameterFunction<
         IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>
@@ -576,20 +584,6 @@ namespace zip2.list
                     }
                 });
 
-        static Func<IEnumerable<ZipEntry>,IEnumerable<ZipEntry>>
-            ReverseEntry = Seq<ZipEntry>.NoChange;
-        static readonly ParameterFunctionSwitch<
-            IEnumerable<ZipEntrySum>, IEnumerable<ZipEntrySum>> Reverse =
-            new ParameterFunctionSwitch<
-                IEnumerable<ZipEntrySum>, IEnumerable<ZipEntrySum>>(
-            "reverse", help:string.Empty,
-            defaultValue: Seq<ZipEntrySum>.NoChange,
-            altValue: (seq) => seq.Reverse(),
-            whenSwitch: () =>
-            {
-                ReverseEntry = (seq) => seq.Reverse();
-            });
-
         static public string NegativeZeroText { get; private set;} = " 0 ";
 
         static readonly ParameterSwitch NegativeZero =
@@ -617,11 +611,8 @@ namespace zip2.list
     sealed class Opt: ParameterOptionSetter<int>
     {
         static public readonly Opt Show = new Opt();
-        public Func<long, string> Crc { get; set; }
+        public Func<string, string> CrcText { get; set; }
         = (_) => string.Empty;
-        public Func<string> CrcTotal { get; set; }
-        = () => string.Empty;
-        HashSet<string> CrcList = new();
         public Func<string,string> CompressedText { get; private set;}
         = (_) => string.Empty;
 
@@ -633,23 +624,8 @@ namespace zip2.list
                     switch (arg)
                     {
                         case "crc":
-                            Show.Crc = (arg) =>
-                            {
-                                var crcThis = arg.ToString("X08");
-                                Show.CrcList.Add(crcThis);
-                                return crcThis + " ";
-                            };
-                            Show.CrcTotal = () =>
-                            {
-                                var crcGrand = string.Join("|",
-                                    Show.CrcList.ToArray());
-                                var crc32 = new ICSharpCode.SharpZipLib
-                                .Checksum.Crc32();
-                                crc32.Reset();
-                                crc32.Update(Encoding.ASCII.GetBytes(crcGrand));
-                                var crcThis = crc32.Value.ToString("X08");
-                                return crcThis + " ";
-                            };
+                            Show.CrcText = (it) => it;
+                            ZipEntrySum.EnableAddCrc();
                             break;
                         case "compress":
                             Show.CompressedText = (arg) => arg;

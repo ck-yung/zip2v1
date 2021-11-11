@@ -6,7 +6,21 @@ namespace zip2
     internal class ZipEntrySum
     {
         public bool AnyCrypted { get; private set; } = false;
+        protected readonly HashSet<string> CrcList = new();
+        public string CrcText()
+        {
+            var crcGrand = string.Join("|",
+                CrcList.OrderBy((it) => it).ToArray());
+            if (string.IsNullOrEmpty(crcGrand))
+            { // ...... 12345678
+                return "00000000";
+            }
 
+            var crc32 = new ICSharpCode.SharpZipLib.Checksum.Crc32();
+            crc32.Reset();
+            crc32.Update(Encoding.ASCII.GetBytes(crcGrand));
+            return crc32.Value.ToString("X08");
+        }
         public int Count { get; private set; } = 0;
         public long Size { get; private set; } = 0L;
         public long CompressedSize { get; private set; } = 0L;
@@ -21,6 +35,18 @@ namespace zip2
             Name = name;
         }
 
+        static Action<HashSet<string>, long> AddCrc
+        { get; set; } = (_, _) => { };
+
+        public static void EnableAddCrc()
+        {
+            AddCrc = (setThe, crcThe) =>
+            {
+                var crcThis = crcThe.ToString("X08");
+                setThe.Add(crcThis);
+            };
+        }
+
         public ZipEntrySum AddWith(ZipEntry arg)
         {
             Count += 1;
@@ -31,6 +57,7 @@ namespace zip2
             if (DateTimeLast < arg.DateTime)
                 DateTimeLast = arg.DateTime;
             if (arg.IsCrypted) AnyCrypted = true;
+            AddCrc(CrcList, arg.Crc);
             return this;
         }
 
@@ -44,6 +71,8 @@ namespace zip2
             if (DateTimeLast < arg.DateTime)
                 DateTimeLast = arg.DateTime;
             if (arg.AnyCrypted) AnyCrypted = true;
+            foreach (var crc in arg.CrcList)
+                CrcList.Add(crc);
             return this;
         }
     }
