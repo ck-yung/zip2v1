@@ -7,6 +7,23 @@ namespace zip2.restore
     {
         public override int Invoke()
         {
+            switch (string.IsNullOrEmpty(Password),
+                string.IsNullOrEmpty(PasswordFrom))
+            {
+                case (false, false):
+                    TotalPrintLine("'--password=' and '--password-from=' cannot be both assigned.");
+                    return 1;
+                case (true, false):
+                    using (var inpFs = File.OpenText(PasswordFrom))
+                    {
+                        var textThe = inpFs.ReadToEnd().Trim();
+                        ((IParser)Password).Parse(textThe);
+                    }
+                    break;
+                default:
+                    break;
+            }
+
             string? basicOutputDir = null;
 
             switch (string.IsNullOrEmpty(OutputDir),
@@ -72,9 +89,9 @@ namespace zip2.restore
                 + DateTime.Now.ToString("s").Replace(":","-")
                 + "." + DateTime.Now.ToString("fff"));
             var zFile = new ZipFile(File.OpenRead(zipFilename));
-            if (!string.IsNullOrEmpty(EncryptPassword))
+            if (!string.IsNullOrEmpty(Password))
             {
-                zFile.Password = EncryptPassword;
+                zFile.Password = Password;
             }
             var tmpExtThe = "." + Guid.NewGuid().ToString("N");
             var countRestore = MyGetZipEntires(zFile)
@@ -188,10 +205,18 @@ namespace zip2.restore
                 {
                     Directory.CreateDirectory(dir2);
                 }
+                var oldFilename2 = Path.GetFileNameWithoutExtension(moveOldToPathname);
+                int oldCount2 = 0;
+                var oldExtension2 = Path.GetExtension(moveOldToPathname);
+                while (File.Exists(moveOldToPathname))
+                {
+                    oldCount2 += 1;
+                    moveOldToPathname = Path.Join(moveOldToDir,
+                    $"{oldFilename2}({oldCount2}){oldExtension2}");
+                }
                 (new FileInfo(theFilename)).MoveTo(moveOldToPathname);
                 countMovePrior += 1;
             }
-
             (new FileInfo(oldFilename)).MoveTo(theFilename);
             SetTimestamp(theFilename, originalTimestamp);
         }
@@ -315,30 +340,6 @@ namespace zip2.restore
                 ["-X"] = ExclDirPrefix,
             }.ToImmutableDictionary<string, string>();
 
-        static readonly ParameterOption<string> EncryptPassword
-            = new ParameterOptionSetter<string>("password",
-                help: "PASSWORD, or console input if -",
-                defaultValue: string.Empty,
-                parse: (val, obj) =>
-                {
-                    if (string.IsNullOrEmpty(val))
-                    {
-                        return false;
-                    }
-
-                    if (val == "-")
-                    {
-                        obj.SetValue(Helper
-                            .ReadConsolePassword(
-                            "password"));
-                    }
-                    else
-                    {
-                        obj.SetValue(val);
-                    }
-                    return true;
-                });
-
         static IParser[] opts =
         {
             Quiet,
@@ -348,7 +349,8 @@ namespace zip2.restore
             OutputDir,
             NewOutputDir,
             NotUpdateLastWriteTime,
-            EncryptPassword,
+            Password,
+            PasswordFrom,
         };
     }
 }

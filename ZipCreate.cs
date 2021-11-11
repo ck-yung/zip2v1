@@ -7,6 +7,23 @@ namespace zip2.create
     {
         public override int Invoke()
         {
+            switch (string.IsNullOrEmpty(EncryptPassword),
+                string.IsNullOrEmpty(PasswordFrom))
+            {
+                case (false, false):
+                    TotalPrintLine("'--password=' and '--password-from=' cannot be both assigned.");
+                    return 1;
+                case (true, false):
+                    using (var inpFs = File.OpenText(PasswordFrom))
+                    {
+                        var textThe = inpFs.ReadToEnd().Trim();
+                        ((IParser)EncryptPassword).Parse(textThe);
+                    }
+                    break;
+                default:
+                    break;
+            }
+
             switch (FilenamesToBeBackup.Count(),
                 string.IsNullOrEmpty(FilesFrom))
             {
@@ -250,9 +267,10 @@ namespace zip2.create
             new Dictionary<string, string[]>
             {
                 [QuietShortcut] = new string[] { QuietText },
-                ["-0"] = new string[] { "--compress-level=fast" },
-                ["-1"] = new string[] { "--compress-level=good" },
-                ["-2"] = new string[] { "--compress-level=better" },
+                ["-0"] = new string[] { "--compress-level=store" },
+                ["-1"] = new string[] { "--compress-level=fast" },
+                ["-2"] = new string[] { "--compress-level=good" },
+                ["-3"] = new string[] { "--compress-level=better" },
             }.ToImmutableDictionary<string, string[]>();
 
         static ImmutableDictionary<string, string> OptionShortCuts =
@@ -291,13 +309,16 @@ namespace zip2.create
 
         static readonly ParameterOption<int> CompressLevel
             = new ParameterOptionSetter<int>("compress-level",
-                "fast|good|better  (default good)", 5,
+                "store|fast|good|better  (default good)", 5,
                 parse: (val,obj) =>
                 {
                     switch (val)
                     {
-                        case "fast":
+                        case "store":
                             obj.SetValue(0);
+                            return true;
+                        case "fast":
+                            obj.SetValue(2);
                             return true;
                         case "good":
                             obj.SetValue(5);
@@ -310,23 +331,23 @@ namespace zip2.create
                     }
                 });
 
-        static readonly ParameterOption<string> EncryptPassword
+        static public readonly ParameterOption<string> EncryptPassword
             = new ParameterOptionSetter<string>("password",
-                help:"PASSWORD, or console input if -",
-                defaultValue:string.Empty,
-                parse: (val,obj) =>
+                help: "PASSWORD, or console input if -",
+                defaultValue: string.Empty,
+                parse: (val, obj) =>
                 {
                     if (string.IsNullOrEmpty(val))
                     {
                         return false;
                     }
 
-                    if (val=="-")
+                    if (val == "-")
                     {
                         obj.SetValue(Helper
                             .ReadConsolePassword(
                             "password",
-                            requireInputCount:2));
+                            requireInputCount: 2));
                     }
                     else
                     {
@@ -342,6 +363,7 @@ namespace zip2.create
             FilesFrom,
             CompressLevel,
             EncryptPassword,
+            PasswordFrom,
         };
     }
 }

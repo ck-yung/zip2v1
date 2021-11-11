@@ -80,6 +80,40 @@ namespace zip2
                 ItemPrintLine = (_) => { };
             });
 
+        static public readonly ParameterOption<string> Password
+            = new ParameterOptionSetter<string>("password",
+                help: "PASSWORD, or console input if -",
+                defaultValue: string.Empty,
+                parse: (val, obj) =>
+                {
+                    if (string.IsNullOrEmpty(val))
+                    {
+                        return false;
+                    }
+
+                    if (val == "-")
+                    {
+                        obj.SetValue(Helper
+                            .ReadConsolePassword(
+                            "password"));
+                    }
+                    else
+                    {
+                        obj.SetValue(val);
+                    }
+                    return true;
+                });
+
+        static public readonly ParameterOption<string> PasswordFrom
+            = new ParameterOptionSetter<string>("password-from",
+                help: "FILENAME",
+                defaultValue: string.Empty,
+                parse: (val, obj) =>
+                {
+                    obj.SetValue(val);
+                    return true;
+                });
+
         static public readonly string TotalOffText = "--total-off";
         static public Action<string> TotalPrintLine
         { get; private set; } = (it) => Console.WriteLine(it);
@@ -155,8 +189,7 @@ namespace zip2
                     Console.WriteLine($"  {string.Join("  ", switchShortCuts[key])}");
                 }
             }
-            Console.Write(@"Please check ""https:\\github.com\ck-yung\zip2\faq\");
-            Console.WriteLine($"{name}-zip.MD\" for more samples.");
+            Console.Write(@"Please check ""https://github.com/ck-yung/zip2/blob/master/faq/readme.MD""");
             return 0;
         }
     }

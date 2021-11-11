@@ -13,7 +13,7 @@ namespace zip2
                 CrcList.OrderBy((it) => it).ToArray());
             if (string.IsNullOrEmpty(crcGrand))
             { // ...... 12345678
-                return "00000000";
+                return "FFFFFFFF";
             }
 
             var crc32 = new ICSharpCode.SharpZipLib.Checksum.Crc32();
@@ -71,8 +71,7 @@ namespace zip2
             if (DateTimeLast < arg.DateTime)
                 DateTimeLast = arg.DateTime;
             if (arg.AnyCrypted) AnyCrypted = true;
-            foreach (var crc in arg.CrcList)
-                CrcList.Add(crc);
+            CrcList.UnionWith(CrcList);
             return this;
         }
     }

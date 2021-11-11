@@ -324,9 +324,9 @@ namespace zip2
                 crc32.Reset();
                 crc32.Update(System.Text.Encoding.ASCII
                     .GetBytes(inputText));
-                var crcText = crc32.Value.ToString("X08");
+                var crcText = crc32.Value.ToString("X08")[^3..];
                 CommandBase.TotalPrintLine(
-                    $" Input {prompt} CRC is {crcText}");
+                    $" Last 3 hex digit of {prompt} CRC is {crcText}");
             }
 
             var get1 = NoEchoInput($"Input {prompt}: ");
