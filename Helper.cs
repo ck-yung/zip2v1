@@ -277,7 +277,7 @@ namespace zip2
         }
 
         static public string ReadConsolePassword(
-            int requireInputCount = 1)
+            string prompt, int requireInputCount = 1)
         {
             string NoEchoInput(string inputPrompt)
             {
@@ -317,7 +317,19 @@ namespace zip2
                 return new string(tmp2);
             }
 
-            var get1 = NoEchoInput("Input password: ");
+            void EchoInputCrc(string inputText)
+            {
+                var crc32 = new ICSharpCode.SharpZipLib
+                    .Checksum.Crc32();
+                crc32.Reset();
+                crc32.Update(System.Text.Encoding.ASCII
+                    .GetBytes(inputText));
+                var crcText = crc32.Value.ToString("X08");
+                CommandBase.TotalPrintLine(
+                    $" Input {prompt} CRC is {crcText}");
+            }
+
+            var get1 = NoEchoInput($"Input {prompt}: ");
 
             if (string.IsNullOrEmpty(get1))
             {
@@ -326,6 +338,7 @@ namespace zip2
 
             if (requireInputCount == 1)
             {
+                EchoInputCrc(get1);
                 return get1;
             }
 
@@ -335,6 +348,7 @@ namespace zip2
                     "Different passwords are input!");
             }
 
+            EchoInputCrc(get1);
             return get1;
         }
     }

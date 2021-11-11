@@ -58,17 +58,6 @@ namespace zip2.create
                 return 1;
             }
 
-            if (!string.IsNullOrEmpty(EncryptPassword))
-            {
-                var crc32 = new ICSharpCode.SharpZipLib
-                    .Checksum.Crc32();
-                crc32.Reset();
-                crc32.Update(System.Text.Encoding.ASCII
-                    .GetBytes(EncryptPassword));
-                var crcPassword = crc32.Value.ToString("X08");
-                TotalPrintLine($" Password CRC is {crcPassword}");
-            }
-
             int countAdd = 0;
             var zDirThe = Path.GetDirectoryName(zipFilename);
             var zFilename = Path.GetFileName(zipFilename);
@@ -215,10 +204,24 @@ namespace zip2.create
                             writtenSize += readSize;
                         }
                     }
+                    catch (ZipException zipEe)
+                    {
+                        ItemPrint(" ");
+                        ItemPrint(zipEe.Message);
+                    }
                     catch (Exception ee)
                     {
                         ItemPrint(" ");
-                        ItemPrint(ee.Message);
+                        var checkDebug = Environment
+                        .GetEnvironmentVariable("zip2");
+                        if (checkDebug?.Contains(":debug:") ?? false)
+                        {
+                            ItemPrint(ee.ToString());
+                        }
+                        else
+                        {
+                            ItemPrint(ee.Message);
+                        }
                     }
                 }
 
@@ -322,6 +325,7 @@ namespace zip2.create
                     {
                         obj.SetValue(Helper
                             .ReadConsolePassword(
+                            "password",
                             requireInputCount:2));
                     }
                     else

@@ -72,6 +72,10 @@ namespace zip2.restore
                 + DateTime.Now.ToString("s").Replace(":","-")
                 + "." + DateTime.Now.ToString("fff"));
             var zFile = new ZipFile(File.OpenRead(zipFilename));
+            if (!string.IsNullOrEmpty(EncryptPassword))
+            {
+                zFile.Password = EncryptPassword;
+            }
             var tmpExtThe = "." + Guid.NewGuid().ToString("N");
             var countRestore = MyGetZipEntires(zFile)
                 .Where((it) => NameFilter.Invoke(it.Name))
@@ -109,10 +113,24 @@ namespace zip2.restore
                             originalTimestamp:it.Entry.DateTime);
                         rtn = true;
                     }
+                    catch (ZipException zipEe)
+                    {
+                        ItemPrint(" ");
+                        ItemPrint(zipEe.Message);
+                    }
                     catch (Exception ee)
                     {
                         ItemPrint(" ");
-                        ItemPrint(ee.ToString());
+                        var checkDebug = Environment
+                        .GetEnvironmentVariable("zip2");
+                        if (checkDebug?.Contains(":debug:")??false)
+                        {
+                            ItemPrint(ee.ToString());
+                        }
+                        else
+                        {
+                            ItemPrint(ee.Message);
+                        }
                     }
                     ItemPrint(Environment.NewLine);
                     return rtn;
@@ -280,6 +298,30 @@ namespace zip2.restore
                 ["-X"] = ExclDirPrefix,
             }.ToImmutableDictionary<string, string>();
 
+        static readonly ParameterOption<string> EncryptPassword
+            = new ParameterOptionSetter<string>("password",
+                help: "PASSWORD, or console input if -",
+                defaultValue: string.Empty,
+                parse: (val, obj) =>
+                {
+                    if (string.IsNullOrEmpty(val))
+                    {
+                        return false;
+                    }
+
+                    if (val == "-")
+                    {
+                        obj.SetValue(Helper
+                            .ReadConsolePassword(
+                            "password"));
+                    }
+                    else
+                    {
+                        obj.SetValue(val);
+                    }
+                    return true;
+                });
+
         static IParser[] opts =
         {
             Quiet,
@@ -289,6 +331,7 @@ namespace zip2.restore
             OutputDir,
             NewOutputDir,
             NotUpdateLastWriteTime,
+            EncryptPassword,
         };
     }
 }
