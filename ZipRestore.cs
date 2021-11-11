@@ -137,6 +137,21 @@ namespace zip2.restore
                 })
                 .Where((it) => it)
                 .Count();
+
+            switch (countMovePrior)
+            {
+                case 1:
+                    TotalPrintLine(
+                        $" One existing file is moved to {dirMovePriorTo}");
+                    break;
+                case > 1:
+                    TotalPrintLine(
+                        $" {countMovePrior} existing files are moved to {dirMovePriorTo}");
+                    break;
+                default:
+                    break;
+            }
+
             switch (countRestore)
             {
                 case 0:
@@ -156,6 +171,7 @@ namespace zip2.restore
         static Action<string, DateTime> SetTimestamp =
             (filename, timestamp) => File.SetLastWriteTime(filename, timestamp);
 
+        int countMovePrior = 0;
         void ForceRename( string oldFilename,
             string moveOldToDir,
             string targetFilename,
@@ -173,6 +189,7 @@ namespace zip2.restore
                     Directory.CreateDirectory(dir2);
                 }
                 (new FileInfo(theFilename)).MoveTo(moveOldToPathname);
+                countMovePrior += 1;
             }
 
             (new FileInfo(oldFilename)).MoveTo(theFilename);
