@@ -58,6 +58,17 @@ namespace zip2.create
                 return 1;
             }
 
+            if (!string.IsNullOrEmpty(EncryptPassword))
+            {
+                var crc32 = new ICSharpCode.SharpZipLib
+                    .Checksum.Crc32();
+                crc32.Reset();
+                crc32.Update(System.Text.Encoding.ASCII
+                    .GetBytes(EncryptPassword));
+                var crcPassword = crc32.Value.ToString("X08");
+                TotalPrintLine($" Password CRC is {crcPassword}");
+            }
+
             int countAdd = 0;
             var zDirThe = Path.GetDirectoryName(zipFilename);
             var zFilename = Path.GetFileName(zipFilename);
@@ -73,6 +84,11 @@ namespace zip2.create
                 {
                     zs.UseZip64 = UseZip64.Dynamic;
                     zs.SetLevel(CompressLevel);
+
+                    if (!string.IsNullOrEmpty(EncryptPassword))
+                    {
+                        zs.Password = EncryptPassword;
+                    }
 
                     foreach (var filename in FilenamesToBeBackup)
                     {
@@ -205,14 +221,18 @@ namespace zip2.create
                         ItemPrint(ee.Message);
                     }
                 }
-                zs.CloseEntry();
 
-                if (sizeThe!=writtenSize)
+                if (sizeThe==writtenSize)
+                {
+                    zs.CloseEntry();
+                }
+                else
                 {
                     ItemPrint($" WantSize:{sizeThe}");
                     ItemPrint($" but RealSize:{writtenSize} !");
                     return false;
                 }
+
                 return true;
             }
             catch (Exception ee)
@@ -287,12 +307,37 @@ namespace zip2.create
                     }
                 });
 
+        static readonly ParameterOption<string> EncryptPassword
+            = new ParameterOptionSetter<string>("password",
+                help:"PASSWORD, or console input if -",
+                defaultValue:string.Empty,
+                parse: (val,obj) =>
+                {
+                    if (string.IsNullOrEmpty(val))
+                    {
+                        return false;
+                    }
+
+                    if (val=="-")
+                    {
+                        obj.SetValue(Helper
+                            .ReadConsolePassword(
+                            requireInputCount:2));
+                    }
+                    else
+                    {
+                        obj.SetValue(val);
+                    }
+                    return true;
+                });
+
         static IParser[] opts =
         {
             Quiet,
             TotalOff,
             FilesFrom,
-            (IParser) CompressLevel,
+            CompressLevel,
+            EncryptPassword,
         };
     }
 }

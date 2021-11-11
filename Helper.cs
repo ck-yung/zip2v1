@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace zip2
@@ -275,6 +276,67 @@ namespace zip2
             }
         }
 
+        static public string ReadConsolePassword(
+            int requireInputCount = 1)
+        {
+            string NoEchoInput(string inputPrompt)
+            {
+                Console.Error.Write(inputPrompt);
+                var buf = new Stack<char>();
+                ConsoleKeyInfo cki;
+                Console.TreatControlCAsInput = true;
+                do
+                {
+                    cki = Console.ReadKey(true);
+                    if (cki.Key == ConsoleKey.Enter) break;
+                    int inp = (int)cki.KeyChar;
+
+                    if (((ConsoleModifiers.Shift & cki.Modifiers) != 0)
+                        && (inp >= 'a') && (inp <= 'z'))
+                    {
+                        inp += 'A' - 'a';
+                    }
+
+                    if ((inp >= ' ') && (inp < 127))
+                    {
+                        buf.Push((char)inp);
+                        Console.Error.Write('*');
+                    }
+                    else if (cki.Key == ConsoleKey.Backspace)
+                    {
+                        if (buf.Count > 0)
+                        {
+                            buf.Pop();
+                            Console.Error.Write('<');
+                        }
+                    }
+                } while (true);
+                Console.Error.WriteLine();
+                var tmp2 = buf.ToArray();
+                Array.Reverse(tmp2);
+                return new string(tmp2);
+            }
+
+            var get1 = NoEchoInput("Input password: ");
+
+            if (string.IsNullOrEmpty(get1))
+            {
+                throw new ArgumentException("No password is input!");
+            }
+
+            if (requireInputCount == 1)
+            {
+                return get1;
+            }
+
+            if (get1 != NoEchoInput("Input again: "))
+            {
+                throw new ArgumentException(
+                    "Different passwords are input!");
+            }
+
+            return get1;
+        }
     }
 
     internal class Seq<T>
