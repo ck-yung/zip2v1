@@ -229,35 +229,35 @@ namespace ICSharpCode.SharpZipLib.Zip
 				: NameTransform.TransformFile(entry.Name);
 		}
 
-        /// <summary>
-        /// Starts a new Zip entry. It automatically closes the previous
-        /// entry if present.
-        /// All entry elements bar name are optional, but must be correct if present.
-        /// If the compression method is stored and the output is not patchable
-        /// the compression for that entry is automatically changed to deflate level 0
-        /// </summary>
-        /// <param name="entry">
-        /// the entry.
-        /// </param>
-        /// <param name="isTranscational"></param>
-        /// <exception cref="System.ArgumentNullException">
-        /// if entry passed is null.
-        /// </exception>
-        /// <exception cref="System.IO.IOException">
-        /// if an I/O error occurred.
-        /// </exception>
-        /// <exception cref="System.InvalidOperationException">
-        /// if stream was finished
-        /// </exception>
-        /// <exception cref="ZipException">
-        /// Too many entries in the Zip file<br/>
-        /// Entry name is too long<br/>
-        /// Finish has already been called<br/>
-        /// </exception>
-        /// <exception cref="System.NotImplementedException">
-        /// The Compression method specified for the entry is unsupported.
-        /// </exception>
-        public void PutNextEntry(ZipEntry entry, bool isTranscational = false)
+		/// <summary>
+		/// Starts a new Zip entry. It automatically closes the previous
+		/// entry if present.
+		/// All entry elements bar name are optional, but must be correct if present.
+		/// If the compression method is stored and the output is not patchable
+		/// the compression for that entry is automatically changed to deflate level 0
+		/// </summary>
+		/// <param name="entry">
+		/// the entry.
+		/// </param>
+		/// <param name="isTranscational"></param>
+		/// <exception cref="System.ArgumentNullException">
+		/// if entry passed is null.
+		/// </exception>
+		/// <exception cref="System.IO.IOException">
+		/// if an I/O error occurred.
+		/// </exception>
+		/// <exception cref="System.InvalidOperationException">
+		/// if stream was finished
+		/// </exception>
+		/// <exception cref="ZipException">
+		/// Too many entries in the Zip file<br/>
+		/// Entry name is too long<br/>
+		/// Finish has already been called<br/>
+		/// </exception>
+		/// <exception cref="System.NotImplementedException">
+		/// The Compression method specified for the entry is unsupported.
+		/// </exception>
+		public void PutNextEntry(ZipEntry entry, bool isTranscational = false)
 		{
 			if (curEntry != null)
 			{
@@ -265,7 +265,7 @@ namespace ICSharpCode.SharpZipLib.Zip
 			}
 
 			if (isTranscational)
-            {
+			{
 				positionRollbackTo = baseOutputStream_.Position;
 				offsetRollbackTo = offset;
 			}
@@ -605,16 +605,16 @@ namespace ICSharpCode.SharpZipLib.Zip
 
 		
 		// File format for AES:
-        // Size (bytes)   Content
-        // ------------   -------
-        // Variable       Salt value
-        // 2              Password verification value
-        // Variable       Encrypted file data
-        // 10             Authentication code
-        //
-        // Value in the "compressed size" fields of the local file header and the central directory entry
-        // is the total size of all the items listed above. In other words, it is the total size of the
-        // salt value, password verification value, encrypted data, and authentication code.
+		// Size (bytes)   Content
+		// ------------   -------
+		// Variable       Salt value
+		// 2              Password verification value
+		// Variable       Encrypted file data
+		// 10             Authentication code
+		//
+		// Value in the "compressed size" fields of the local file header and the central directory entry
+		// is the total size of all the items listed above. In other words, it is the total size of the
+		// salt value, password verification value, encrypted data, and authentication code.
         		
 		/// <summary>
 		/// Initializes encryption keys based on given password.
@@ -919,10 +919,10 @@ namespace ICSharpCode.SharpZipLib.Zip
 		/// Preform stream rollback
 		/// </summary>
 		public void Rollback()
-        {
+		{
 			if (positionRollbackTo < 0 ||
 				offsetRollbackTo < 0)
-            {
+			{
 				throw new ArgumentException("Missing rollback setup");
 			}
 			var currentLength = baseOutputStream_.Length;
