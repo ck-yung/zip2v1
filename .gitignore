@@ -8,3 +8,7 @@ Properties/*
 .DS_Store
 __MACOSX/*
 **/.DS_Store
+**/.vs/*
+**/.vscode/*
+**/bin/*
+**/obj/*
