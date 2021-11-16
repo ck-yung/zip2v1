@@ -231,14 +231,14 @@ namespace zip2.create
                 };
 
                 long writtenSize = 0L;
-                zs.PutNextEntry(entry);
+                zs.PutNextEntry(entry, isTranscational:true);
                 byte[] buffer = new byte[32 * 1024];
                 using (FileStream fs = File.OpenRead(filename))
                 {
                     try
                     {
                         for (int readSize = fs.Read(buffer, 0, buffer.Length);
-                            readSize > 0;
+                            readSize > 0 && sizeThe > writtenSize;
                             readSize = fs.Read(buffer, 0, buffer.Length))
                         {
                             zs.Write(buffer, 0, readSize);
@@ -272,8 +272,9 @@ namespace zip2.create
                 }
                 else
                 {
-                    ItemPrint($" WantSize:{sizeThe}");
-                    ItemPrint($" but RealSize:{writtenSize} !");
+                    ItemPrint($" is abortd because want {sizeThe}b");
+                    ItemPrint($" but only {writtenSize}b !");
+                    zs.Rollback();
                     return false;
                 }
 

@@ -229,38 +229,45 @@ namespace ICSharpCode.SharpZipLib.Zip
 				: NameTransform.TransformFile(entry.Name);
 		}
 
-		/// <summary>
-		/// Starts a new Zip entry. It automatically closes the previous
-		/// entry if present.
-		/// All entry elements bar name are optional, but must be correct if present.
-		/// If the compression method is stored and the output is not patchable
-		/// the compression for that entry is automatically changed to deflate level 0
-		/// </summary>
-		/// <param name="entry">
-		/// the entry.
-		/// </param>
-		/// <exception cref="System.ArgumentNullException">
-		/// if entry passed is null.
-		/// </exception>
-		/// <exception cref="System.IO.IOException">
-		/// if an I/O error occurred.
-		/// </exception>
-		/// <exception cref="System.InvalidOperationException">
-		/// if stream was finished
-		/// </exception>
-		/// <exception cref="ZipException">
-		/// Too many entries in the Zip file<br/>
-		/// Entry name is too long<br/>
-		/// Finish has already been called<br/>
-		/// </exception>
-		/// <exception cref="System.NotImplementedException">
-		/// The Compression method specified for the entry is unsupported.
-		/// </exception>
-		public void PutNextEntry(ZipEntry entry)
+        /// <summary>
+        /// Starts a new Zip entry. It automatically closes the previous
+        /// entry if present.
+        /// All entry elements bar name are optional, but must be correct if present.
+        /// If the compression method is stored and the output is not patchable
+        /// the compression for that entry is automatically changed to deflate level 0
+        /// </summary>
+        /// <param name="entry">
+        /// the entry.
+        /// </param>
+        /// <param name="isTranscational"></param>
+        /// <exception cref="System.ArgumentNullException">
+        /// if entry passed is null.
+        /// </exception>
+        /// <exception cref="System.IO.IOException">
+        /// if an I/O error occurred.
+        /// </exception>
+        /// <exception cref="System.InvalidOperationException">
+        /// if stream was finished
+        /// </exception>
+        /// <exception cref="ZipException">
+        /// Too many entries in the Zip file<br/>
+        /// Entry name is too long<br/>
+        /// Finish has already been called<br/>
+        /// </exception>
+        /// <exception cref="System.NotImplementedException">
+        /// The Compression method specified for the entry is unsupported.
+        /// </exception>
+        public void PutNextEntry(ZipEntry entry, bool isTranscational = false)
 		{
 			if (curEntry != null)
 			{
 				CloseEntry();
+			}
+
+			if (isTranscational)
+            {
+				positionRollbackTo = baseOutputStream_.Position;
+				offsetRollbackTo = offset;
 			}
 
 			PutNextEntry(baseOutputStream_, entry);
@@ -481,6 +488,8 @@ namespace ICSharpCode.SharpZipLib.Zip
 
 			entries.Add(curEntry);
 			curEntry = null;
+			positionRollbackTo = -1;
+			offsetRollbackTo = -1;
 		}
 
 		/// <inheritdoc cref="CloseEntry"/>
@@ -894,5 +903,42 @@ namespace ICSharpCode.SharpZipLib.Zip
 		private static RandomNumberGenerator _aesRnd = RandomNumberGenerator.Create();
 
 		#endregion Static Fields
+
+		#region zip2: Rollback feature
+		/// <summary>
+		/// Stream rollback position
+		/// </summary>
+		protected long positionRollbackTo = -1;
+
+		/// <summary>
+		/// Offset rollback value
+		/// </summary>
+		protected long offsetRollbackTo = -1;
+
+		/// <summary>
+		/// Preform stream rollback
+		/// </summary>
+		public void Rollback()
+        {
+			if (positionRollbackTo < 0 ||
+				offsetRollbackTo < 0)
+            {
+				throw new ArgumentException("Missing rollback setup");
+			}
+			var currentLength = baseOutputStream_.Length;
+			if (positionRollbackTo > currentLength ||
+				offsetRollbackTo > currentLength)
+			{
+				throw new ArgumentException("Invalid rollback state");
+			}
+			baseOutputStream_.Seek(positionRollbackTo, SeekOrigin.Begin);
+			baseOutputStream_.SetLength(positionRollbackTo);
+			offset = offsetRollbackTo;
+			positionRollbackTo = -1;
+			offsetRollbackTo = -1;
+			patchEntryHeader = false;
+			curEntry = null;
+		}
+		#endregion
 	}
 }
