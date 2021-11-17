@@ -73,11 +73,28 @@ namespace zip2
         { get; private set; } = (it) => Console.Write(it);
         static public Action<string> ItemPrintLine
         { get; private set; } = (it) => Console.WriteLine(it);
+        static string LastErrorPrintFilename = "?";
+        static public Action<string> ItemErrorPrintFilename
+        { get; private set; } = (_) => { };
+        static public Action<string> ItemErrorPrintMessage
+        { get; private set; } = (it) => Console.Write(it);
         static public readonly ParameterSwitch Quiet =
             new ParameterSwitch("quiet", whenSwitch: () =>
             {
                 ItemPrint = (_) => { };
                 ItemPrintLine = (_) => { };
+                ItemErrorPrintFilename = (it) =>
+                {
+                    if (it != LastErrorPrintFilename)
+                    {
+                        Console.Error.Write(it);
+                        LastErrorPrintFilename = it;
+                    }
+                };
+                ItemErrorPrintMessage = (it) =>
+                {
+                    Console.Error.WriteLine(it);
+                };
             });
 
         static public readonly ParameterOption<string> Password

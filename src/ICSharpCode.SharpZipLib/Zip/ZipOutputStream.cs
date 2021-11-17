@@ -156,8 +156,10 @@ namespace ICSharpCode.SharpZipLib.Zip
 		}
 
 		/// <summary>
-		/// Used for transforming the names of entries added by <see cref="PutNextEntry(ZipEntry)"/>.
-		/// Defaults to <see cref="PathTransformer"/>, set to null to disable transforms and use names as supplied.
+		/// Used for transforming the names of entries added by
+        /// <see cref="PutNextEntry(ZipEntry,bool)"/>.
+		/// Defaults to <see cref="PathTransformer"/>, set to null to disable
+        /// transforms and use names as supplied.
 		/// </summary>
 		public INameTransform NameTransform { get; set; } = new PathTransformer();
 		
@@ -239,7 +241,7 @@ namespace ICSharpCode.SharpZipLib.Zip
 		/// <param name="entry">
 		/// the entry.
 		/// </param>
-		/// <param name="isTranscational"></param>
+		/// <param name="isTranscational">default false</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// if entry passed is null.
 		/// </exception>

@@ -158,23 +158,24 @@ namespace zip2.restore
                     }
                     catch (ZipException zipEe)
                     {
-                        ItemPrint(" ");
-                        ItemPrint(zipEe.Message);
+                        ItemErrorPrintFilename(it.Entry.Name);
+                        ItemErrorPrintMessage($" {zipEe.Message}");
                         if (File.Exists(tmpFilename))
                             File.Delete(tmpFilename);
                     }
                     catch (Exception ee)
                     {
+                        ItemErrorPrintFilename(it.Entry.Name);
                         ItemPrint(" ");
                         var checkDebug = Environment
                         .GetEnvironmentVariable("zip2");
                         if (checkDebug?.Contains(":debug:")??false)
                         {
-                            ItemPrint(ee.ToString());
+                            ItemErrorPrintMessage($" {ee.ToString()}");
                         }
                         else
                         {
-                            ItemPrint(ee.Message);
+                            ItemErrorPrintMessage($" {ee.Message}");
                         }
                         if (File.Exists(tmpFilename))
                             File.Delete(tmpFilename);

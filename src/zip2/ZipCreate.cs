@@ -102,15 +102,16 @@ namespace zip2.create
             int countAdd = 0;
             var zDirThe = Path.GetDirectoryName(zipFilename);
             var zFilename = Path.GetFileName(zipFilename);
-            var tempFilename = zFilename + "."
+            var zShadowOutputFilename = zFilename + "."
                 + Path.GetRandomFileName() + ".tmp";
-            var tempPathname = (string.IsNullOrEmpty(zDirThe))
-                ? tempFilename : Path.Join(zDirThe, tempFilename);
+            var zShadowOutputPathName = (string.IsNullOrEmpty(zDirThe))
+                ? zShadowOutputFilename
+                : Path.Join(zDirThe, zShadowOutputFilename);
             using (var realOutputFile = File.Create(zipFilename))
             {
-                realOutputFile.Write(new byte[] { 0, 0});
+                realOutputFile.Write(new byte[] { 19, 97, 7, 1});
                 using (ZipOutputStream zs = new ZipOutputStream(
-                    File.Create(tempPathname)))
+                    File.Create(zShadowOutputPathName)))
                 {
                     zs.UseZip64 = UseZip64.Dynamic;
                     zs.SetLevel(CompressLevel);
@@ -131,17 +132,29 @@ namespace zip2.create
                     zs.Close();
                 }
 
-                switch (countAdd)
+                var zShadowOutputFileSize =
+                    File.Exists(zShadowOutputPathName)
+                    ? new FileInfo(zShadowOutputPathName).Length
+                    : -1;
+
+                switch (countAdd, zShadowOutputFileSize)
                 {
-                    case 0:
+                    case (0,_):
                         TotalPrintLine(" No file is stored.");
-                        if (File.Exists(tempPathname))
+                        if (zShadowOutputFileSize >= 0)
                         {
-                            File.Delete(tempPathname);
+                            File.Delete(zShadowOutputPathName);
                         }
                         break;
-                    case 1:
+                    case (1, >= 100):
                         TotalPrintLine(" One file is stored.");
+                        break;
+                    case (_, < 100):
+                        TotalPrintLine(" Unknown error");
+                        if (zShadowOutputFileSize >= 0)
+                        {
+                            File.Delete(zShadowOutputPathName);
+                        }
                         break;
                     default:
                         TotalPrintLine($" {countAdd} files are stored.");
@@ -152,51 +165,15 @@ namespace zip2.create
             var temp2Filename = Path.GetRandomFileName() + ".tmp";
             var temp2Pathname = (string.IsNullOrEmpty(zDirThe))
                 ? temp2Filename : Path.Join(zDirThe, temp2Filename);
-            switch (File.Exists(zipFilename), File.Exists(tempPathname))
+
+            switch (File.Exists(zipFilename),
+                File.Exists(zShadowOutputPathName))
             {
-                case (true, true):
-                    try
-                    {
-                        var infoZip9 = new FileInfo(zipFilename);
-                        infoZip9.MoveTo(temp2Pathname);
-                    }
-                    catch (Exception ee)
-                    {
-                        Console.Error.WriteLine($"{ee.Message}");
-                        Console.Error.WriteLine(
-                            $" Failed to rename from empty '{zipFilename}'");
-                    }
-
-                    try
-                    {
-                        var infoZip8 = new FileInfo(tempPathname);
-                        infoZip8.MoveTo(zipFilename);
-                    }
-                    catch (Exception ee)
-                    {
-                        Console.Error.WriteLine($"{ee.Message}");
-                        Console.Error.WriteLine(
-                            $"Failed to rename to real '{zipFilename}'");
-                    }
-
-                    try
-                    {
-                        if (File.Exists(temp2Pathname))
-                        {
-                            File.Delete(temp2Pathname);
-                        }
-                    }
-                    catch
-                    {
-                    }
-
-                    break;
-
                 case (false, true):
                     try
                     {
-                        var infoZip7 = new FileInfo(tempPathname);
-                        infoZip7.MoveTo(zipFilename);
+                        new FileInfo(zShadowOutputPathName)
+                            .MoveTo(zipFilename);
                     }
                     catch (Exception ee)
                     {
@@ -205,8 +182,40 @@ namespace zip2.create
                             $"Failed to rename to '{zipFilename}'");
                     }
                     break;
+
+                case (true, true):
+                    try
+                    {
+                        new FileInfo(zipFilename)
+                            .MoveTo(temp2Pathname);
+                        new FileInfo(zShadowOutputPathName)
+                            .MoveTo(zipFilename);
+                    }
+                    catch (Exception ee)
+                    {
+                        Console.Error.WriteLine($"{ee.Message}");
+                        Console.Error.WriteLine(
+                            $" Failed while rename file '{zipFilename}'");
+                    }
+                    finally
+                    {
+                        if (File.Exists(temp2Pathname))
+                        {
+                            File.Delete(temp2Pathname);
+                        }
+                    }
+                    break;
+
+                case (true, false):
+                    if (File.Exists(zipFilename))
+                    {
+                        File.Delete(zipFilename);
+                    }
+                    break;
+
                 default:
-                    Console.Error.WriteLine("Failed by some unknown error!");
+                    Console.Error.WriteLine(
+                        " Failed by some unknown error!");
                     break;
             }
 
@@ -247,21 +256,21 @@ namespace zip2.create
                     }
                     catch (ZipException zipEe)
                     {
-                        ItemPrint(" ");
-                        ItemPrint(zipEe.Message);
+                        ItemErrorPrintFilename(filename);
+                        ItemErrorPrintMessage($" {zipEe.Message}");
                     }
                     catch (Exception ee)
                     {
-                        ItemPrint(" ");
+                        ItemErrorPrintFilename(filename);
                         var checkDebug = Environment
                         .GetEnvironmentVariable("zip2");
                         if (checkDebug?.Contains(":debug:") ?? false)
                         {
-                            ItemPrint(ee.ToString());
+                            ItemErrorPrintMessage($" {ee.ToString()}");
                         }
                         else
                         {
-                            ItemPrint(ee.Message);
+                            ItemErrorPrintMessage($" {ee.Message}");
                         }
                     }
                 }
@@ -272,8 +281,10 @@ namespace zip2.create
                 }
                 else
                 {
-                    ItemPrint($" is abortd because want {sizeThe}b");
-                    ItemPrint($" but only {writtenSize}b !");
+                    ItemErrorPrintFilename(filename);
+                    ItemErrorPrintMessage(" is abortd");
+                    ItemPrint(
+                        $" because want {sizeThe}b but find {writtenSize}b !");
                     zs.Rollback();
                     return false;
                 }
@@ -282,8 +293,8 @@ namespace zip2.create
             }
             catch (Exception ee)
             {
-                ItemPrint(" ");
-                ItemPrint(ee.Message);
+                ItemErrorPrintFilename(filename);
+                ItemErrorPrintMessage($" {ee.Message}");
                 return false;
             }
         }
