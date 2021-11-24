@@ -7,7 +7,7 @@ namespace zip2.create
     {
         public override int Invoke()
         {
-            switch (string.IsNullOrEmpty(EncryptPassword),
+            switch (string.IsNullOrEmpty(Password),
                 string.IsNullOrEmpty(PasswordFrom),
                 string.IsNullOrEmpty(PasswordFromRaw))
             {
@@ -20,7 +20,7 @@ namespace zip2.create
                             TotalPrintLine($"File '{PasswordFrom}' contains blank content!");
                             return 1;
                         }
-                        ((IParser)EncryptPassword).Parse(textThe);
+                        ((IParser)Password).Parse(textThe);
                     }
                     break;
                 case (true, true, false):
@@ -35,7 +35,7 @@ namespace zip2.create
                         var buf = new byte[readSize];
                         inpFs.Read(buf);
                         var textThe = System.Text.Encoding.UTF8.GetString(buf);
-                        ((IParser)EncryptPassword).Parse(textThe);
+                        ((IParser)Password).Parse(textThe);
                     }
                     break;
                 case (false, false, _):
@@ -99,7 +99,8 @@ namespace zip2.create
                 return 1;
             }
 
-            int countAdd = 0;
+            int countArchived = 0;
+            int countPostArchived = 0;
             var zDirThe = Path.GetDirectoryName(zipFilename);
             var zFilename = Path.GetFileName(zipFilename);
             var zShadowOutputFilename = zFilename + "."
@@ -116,16 +117,18 @@ namespace zip2.create
                     zs.UseZip64 = UseZip64.Dynamic;
                     zs.SetLevel(CompressLevel);
 
-                    if (!string.IsNullOrEmpty(EncryptPassword))
+                    if (!string.IsNullOrEmpty(Password))
                     {
-                        zs.Password = EncryptPassword;
+                        zs.Password = Password;
                     }
 
                     foreach (var filename in FilenamesToBeBackup)
                     {
                         ItemPrint(filename);
-                        countAdd += (AddToZip(filename, zs)) ? 1 : 0;
+                        countArchived += (AddToZip(filename, zs)) ? 1 : 0;
                         ItemPrint(Environment.NewLine);
+                        countPostArchived += PostArchivedFucntion(filename)
+                            ? 1 : 0;
                     }
 
                     zs.Finish();
@@ -137,27 +140,35 @@ namespace zip2.create
                     ? new FileInfo(zShadowOutputPathName).Length
                     : -1;
 
-                switch (countAdd, zShadowOutputFileSize)
+                switch (countArchived, countPostArchived, zShadowOutputFileSize)
                 {
-                    case (0,_):
+                    case (0,_,_):
                         TotalPrintLine(" No file is stored.");
                         if (zShadowOutputFileSize >= 0)
                         {
                             File.Delete(zShadowOutputPathName);
                         }
                         break;
-                    case (1, >= 100):
+                    case (1, 0, >= 100):
                         TotalPrintLine(" One file is stored.");
                         break;
-                    case (_, < 100):
+                    case (1, 1, >= 100):
+                        TotalPrintLine(" One file is stored and moved.");
+                        break;
+                    case ( > 1, 0, >= 100):
+                        TotalPrintLine($" {countArchived} files are stored.");
+                        break;
+                    case ( > 1, > 0, >= 100):
+                        TotalPrintLine(
+                            $" {countArchived} files are stored." +
+                            $" (#moved:{countPostArchived})");
+                        break;
+                    default:
                         TotalPrintLine(" Unknown error");
                         if (zShadowOutputFileSize >= 0)
                         {
                             File.Delete(zShadowOutputPathName);
                         }
-                        break;
-                    default:
-                        TotalPrintLine($" {countAdd} files are stored.");
                         break;
                 }
             }
@@ -307,6 +318,7 @@ namespace zip2.create
                 ["-1"] = new string[] { "--compress-level=fast" },
                 ["-2"] = new string[] { "--compress-level=good" },
                 ["-3"] = new string[] { "--compress-level=better" },
+                ["-m"] = new string[] { "--move-after-archived" },
             }.ToImmutableDictionary<string, string[]>();
 
         static ImmutableDictionary<string, string> OptionShortCuts =
@@ -367,30 +379,41 @@ namespace zip2.create
                     }
                 });
 
-        static public readonly ParameterOption<string> EncryptPassword
-            = new ParameterOptionSetter<string>("password",
-                help: "PASSWORD, or console input if -",
-                defaultValue: string.Empty,
-                parse: (val, obj) =>
-                {
-                    if (string.IsNullOrEmpty(val))
-                    {
-                        return false;
-                    }
+        static public Func<string,bool> PostArchivedFucntion
+        { get; private set; } = (_) => false;
 
-                    if (val == "-")
+        static readonly ParameterSwitch PostArchived =
+        new ParameterSwitch("move-after-archived",
+        help: "move archived files to \"zip2archived <TIMESTAMP>\"",
+        whenSwitch: () =>
+        {
+            var dirMoveTo = "zip2archived "
+                + DateTime.Now.ToString("s").Replace(":", "-")
+                + "." + DateTime.Now.ToString("fff");
+            PostArchivedFucntion = (fname) =>
+            {
+                if (string.IsNullOrEmpty(fname) ||
+                !File.Exists(fname)) return false;
+                try
+                {
+                    var destPathname = Path.Join(dirMoveTo, fname);
+                    var destDir = Path.GetDirectoryName(destPathname);
+                    if (!string.IsNullOrEmpty(destDir) &&
+                    !Directory.Exists(destDir))
                     {
-                        obj.SetValue(Helper
-                            .ReadConsolePassword(
-                            "password",
-                            requireInputCount: 2));
+                        Directory.CreateDirectory(destDir);
                     }
-                    else
-                    {
-                        obj.SetValue(val);
-                    }
+                    new FileInfo(fname).MoveTo(destPathname);
                     return true;
-                });
+                }
+                catch (Exception ee)
+                {
+                    Console.Error.WriteLine(
+                        $"Failed to move '{fname}' to '{dirMoveTo}':{ee.Message}");
+                    return false;
+                }
+            };
+        });
 
         static IParser[] opts =
         {
@@ -398,7 +421,8 @@ namespace zip2.create
             TotalOff,
             FilesFrom,
             CompressLevel,
-            EncryptPassword,
+            PostArchived,
+            Password,
             PasswordFrom,
             PasswordFromRaw,
         };
