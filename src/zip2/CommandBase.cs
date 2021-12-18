@@ -180,7 +180,7 @@ namespace zip2
                 {
                     prefix = $"--{opt.Name()} ";
                 }
-                Console.Write($" {prefix,20}");
+                Console.Write($" {prefix,23}");
                 if (!string.IsNullOrEmpty(opt.OnlineHelp()))
                 {
                     Console.Write(opt.OnlineHelp());

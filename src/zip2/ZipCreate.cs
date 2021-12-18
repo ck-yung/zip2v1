@@ -1,239 +1,228 @@
 using System.Collections.Immutable;
+using System.Text;
 using ICSharpCode.SharpZipLib.Zip;
 
 namespace zip2.create
 {
     internal class Command : CommandBase
     {
+        static bool IsValidZipFileSize(long size) => size >= 100;
+
         public override int Invoke()
         {
-            switch (string.IsNullOrEmpty(Password),
-                string.IsNullOrEmpty(PasswordFrom),
-                string.IsNullOrEmpty(PasswordFromRaw))
+            try
             {
-                case (true, false, true):
-                    using (var inpFs = File.OpenText(PasswordFrom))
-                    {
-                        var textThe = inpFs.ReadToEnd().Trim();
-                        if (string.IsNullOrEmpty(textThe))
-                        {
-                            TotalPrintLine($"File '{PasswordFrom}' contains blank content!");
-                            return 1;
-                        }
-                        ((IParser)Password).Parse(textThe);
-                    }
-                    break;
-                case (true, true, false):
-                    using (var inpFs = File.OpenRead(PasswordFromRaw))
-                    {
-                        var readSize = new FileInfo(PasswordFromRaw).Length;
-                        if (1 > readSize)
-                        {
-                            TotalPrintLine($"File '{PasswordFromRaw}' is empty!");
-                            return 1;
-                        }
-                        var buf = new byte[readSize];
-                        inpFs.Read(buf);
-                        var textThe = System.Text.Encoding.UTF8.GetString(buf);
-                        ((IParser)Password).Parse(textThe);
-                    }
-                    break;
-                case (false, false, _):
-                case (false, _, false):
-                case (_, false, false):
-                    TotalPrintLine(
-                        " Only one of '--password', '--password-from' and '--password-from-raw' can be assigned.");
-                    return 1;
-                default:
-                    break;
-            }
-
-            switch (FilenamesToBeBackup.Count(),
-                string.IsNullOrEmpty(FilesFrom))
-            {
-                case (0, true):
-                    TotalPrintLine("No file to be backup.");
-                    return 1;
-                case ( > 0, false):
-                    Console.Write("Cannot handle files from --files-from");
-                    Console.WriteLine($"={FilesFrom} and command-line arg FILE.");
-                    return 1;
-                case (0, false):
-                    if (FilesFrom == "-")
-                    {
-                        if (!Console.IsInputRedirected)
-                        {
-                            Console.WriteLine("Only support redir input.");
-                            return 1;
-                        }
-                        FilenamesToBeBackup.AddRange(
-                            Helper.ReadConsoleAllLines()
-                            .Select((it) => it.Trim())
-                            .Where((it) => it.Length > 0)
-                            .Select((it) => Helper.ToStandardDirSep(it))
-                            .Distinct());
-                    }
-                    else
-                    {
-                        FilenamesToBeBackup.AddRange(File
-                            .ReadAllLines(FilesFrom)
-                            .Select((it) => it.Trim())
-                            .Where((it) => it.Length > 0)
-                            .Distinct());
-                    }
-
-                    if (FilenamesToBeBackup.Count()==0)
-                    {
-                        TotalPrintLine(
-                            $"No file is found in (files-from) '{FilesFrom}'");
-                        return 1;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            if (File.Exists(zipFilename))
-            {
-                Console.WriteLine($"Output zip file '{zipFilename}' is found!");
-                return 1;
-            }
-
-            int countArchived = 0;
-            int countPostArchived = 0;
-            var zDirThe = Path.GetDirectoryName(zipFilename);
-            var zFilename = Path.GetFileName(zipFilename);
-            var zShadowOutputFilename = zFilename + "."
-                + Path.GetRandomFileName() + ".tmp";
-            var zShadowOutputPathName = (string.IsNullOrEmpty(zDirThe))
-                ? zShadowOutputFilename
-                : Path.Join(zDirThe, zShadowOutputFilename);
-            using (var realOutputFile = File.Create(zipFilename))
-            {
-                realOutputFile.Write(new byte[] { 19, 97, 7, 1});
-                using (ZipOutputStream zs = new ZipOutputStream(
-                    File.Create(zShadowOutputPathName)))
+                switch (string.IsNullOrEmpty(Password),
+                    string.IsNullOrEmpty(PasswordFrom),
+                    string.IsNullOrEmpty(PasswordFromRaw))
                 {
-                    zs.UseZip64 = UseZip64.Dynamic;
-                    zs.SetLevel(CompressLevel);
-
-                    if (!string.IsNullOrEmpty(Password))
-                    {
-                        zs.Password = Password;
-                    }
-
-                    foreach (var filename in FilenamesToBeBackup)
-                    {
-                        ItemPrint(filename);
-                        countArchived += (AddToZip(filename, zs)) ? 1 : 0;
-                        ItemPrint(Environment.NewLine);
-                        countPostArchived += PostArchivedFucntion(filename)
-                            ? 1 : 0;
-                    }
-
-                    zs.Finish();
-                    zs.Close();
+                    case (true, false, true):
+                        using (var inpFs = File.OpenText(PasswordFrom))
+                        {
+                            var textThe = inpFs.ReadToEnd().Trim();
+                            if (string.IsNullOrEmpty(textThe))
+                            {
+                                TotalPrintLine(
+                                    $"File '{PasswordFrom}' only contains blank content!");
+                                return 1;
+                            }
+                            ((IParser)Password).Parse(textThe);
+                        }
+                        break;
+                    case (true, true, false):
+                        using (var inpFs = File.OpenRead(PasswordFromRaw))
+                        {
+                            var readSize = new FileInfo(PasswordFromRaw).Length;
+                            if (1 > readSize)
+                            {
+                                TotalPrintLine($"File '{PasswordFromRaw}' is empty!");
+                                return 1;
+                            }
+                            var buf = new byte[readSize];
+                            inpFs.Read(buf);
+                            var textThe = Encoding.UTF8.GetString(buf);
+                            ((IParser)Password).Parse(textThe);
+                        }
+                        break;
+                    case (false, false, _):
+                    case (false, _, false):
+                    case (_, false, false):
+                        TotalPrintLine(
+                            " Only one of '--password', '--password-from' and '--password-from-raw' can be assigned.");
+                        return 1;
+                    default:
+                        break;
                 }
+
+                switch (FilenamesToBeBackup.Count(),
+                    string.IsNullOrEmpty(FilesFrom))
+                {
+                    case (0, true):
+                        TotalPrintLine("No file to be backup.");
+                        return 1;
+                    case ( > 0, false):
+                        Console.Write("Cannot handle files from --files-from");
+                        Console.WriteLine($"={FilesFrom} and command-line arg FILE.");
+                        return 1;
+                    case (0, false):
+                        if (FilesFrom == "-")
+                        {
+                            if (!Console.IsInputRedirected)
+                            {
+                                Console.WriteLine("Only support redir input.");
+                                return 1;
+                            }
+                            FilenamesToBeBackup.AddRange(
+                                Helper.ReadConsoleAllLines()
+                                .Select((it) => it.Trim())
+                                .Where((it) => it.Length > 0)
+                                .Select((it) => Helper.ToStandardDirSep(it))
+                                .Distinct());
+                        }
+                        else
+                        {
+                            FilenamesToBeBackup.AddRange(File
+                                .ReadAllLines(FilesFrom)
+                                .Select((it) => it.Trim())
+                                .Where((it) => it.Length > 0)
+                                .Distinct());
+                        }
+
+                        if (FilenamesToBeBackup.Count() == 0)
+                        {
+                            TotalPrintLine(
+                                $"No file is found in (files-from) '{FilesFrom}'");
+                            return 1;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+                if (File.Exists(zipFilename))
+                {
+                    Console.WriteLine($"Output zip file '{zipFilename}' is found!");
+                    return 1;
+                }
+
+                var zDirThe = Path.GetDirectoryName(zipFilename);
+                var zFilename = Path.GetFileName(zipFilename);
+                var zShadowOutputFilename = zFilename + "."
+                    + Path.GetRandomFileName() + ".tmp";
+                var zShadowOutputPathName = (string.IsNullOrEmpty(zDirThe))
+                    ? zShadowOutputFilename
+                    : Path.Join(zDirThe, zShadowOutputFilename);
+
+                (int countAddedIntoZip, int countMovedToArchivedDir) =
+                    InvokeAddToZipFucntion( zipFilename,
+                        zShadowOutputPathName);
 
                 var zShadowOutputFileSize =
                     File.Exists(zShadowOutputPathName)
                     ? new FileInfo(zShadowOutputPathName).Length
                     : -1;
 
-                switch (countArchived, countPostArchived, zShadowOutputFileSize)
+                switch (countAddedIntoZip, countMovedToArchivedDir,
+                    IsValidZipFileSize(zShadowOutputFileSize))
                 {
-                    case (0,_,_):
-                        TotalPrintLine(" No file is stored.");
-                        if (zShadowOutputFileSize >= 0)
+                    case (0, _, _):
+                        TotalPrintLine(" No file is added into zip file.");
+                        if (File.Exists(zShadowOutputPathName))
                         {
                             File.Delete(zShadowOutputPathName);
                         }
                         break;
-                    case (1, 0, >= 100):
-                        TotalPrintLine(" One file is stored.");
+                    case (1, 0, true):
+                        TotalPrintLine(" One file is added into zip file.");
                         break;
-                    case (1, 1, >= 100):
-                        TotalPrintLine(" One file is stored and moved.");
+                    case (1, 1, true):
+                        TotalPrintLine(" One file is added into and moved to archived dir.");
                         break;
-                    case ( > 1, 0, >= 100):
-                        TotalPrintLine($" {countArchived} files are stored.");
+                    case ( > 1, 0, true):
+                        TotalPrintLine($" {countAddedIntoZip} files are added into zip file.");
                         break;
-                    case ( > 1, > 0, >= 100):
-                        TotalPrintLine(
-                            $" {countArchived} files are stored." +
-                            $" (#moved:{countPostArchived})");
+                    case ( > 1, > 0, true):
+                        TotalPrintLine($" {countAddedIntoZip} files are added into zip file, {countMovedToArchivedDir} are moved to archived dir.");
                         break;
                     default:
                         TotalPrintLine(" Unknown error");
-                        if (zShadowOutputFileSize >= 0)
+                        if (File.Exists(zShadowOutputPathName))
                         {
                             File.Delete(zShadowOutputPathName);
                         }
                         break;
                 }
-            }
 
-            var temp2Filename = Path.GetRandomFileName() + ".tmp";
-            var temp2Pathname = (string.IsNullOrEmpty(zDirThe))
-                ? temp2Filename : Path.Join(zDirThe, temp2Filename);
+                var temp2Filename = Path.GetRandomFileName() + ".tmp";
+                var temp2Pathname = (string.IsNullOrEmpty(zDirThe))
+                    ? temp2Filename : Path.Join(zDirThe, temp2Filename);
 
-            switch (File.Exists(zipFilename),
-                File.Exists(zShadowOutputPathName))
-            {
-                case (false, true):
-                    try
-                    {
-                        new FileInfo(zShadowOutputPathName)
-                            .MoveTo(zipFilename);
-                    }
-                    catch (Exception ee)
-                    {
-                        Console.Error.WriteLine($"{ee.Message}");
-                        Console.Error.WriteLine(
-                            $"Failed to rename to '{zipFilename}'");
-                    }
-                    break;
-
-                case (true, true):
-                    try
-                    {
-                        new FileInfo(zipFilename)
-                            .MoveTo(temp2Pathname);
-                        new FileInfo(zShadowOutputPathName)
-                            .MoveTo(zipFilename);
-                    }
-                    catch (Exception ee)
-                    {
-                        Console.Error.WriteLine($"{ee.Message}");
-                        Console.Error.WriteLine(
-                            $" Failed while rename file '{zipFilename}'");
-                    }
-                    finally
-                    {
-                        if (File.Exists(temp2Pathname))
+                switch (File.Exists(zipFilename),
+                    File.Exists(zShadowOutputPathName))
+                {
+                    case (false, true):
+                        try
                         {
-                            File.Delete(temp2Pathname);
+                            new FileInfo(zShadowOutputPathName)
+                                .MoveTo(zipFilename);
                         }
-                    }
-                    break;
+                        catch (Exception ee)
+                        {
+                            Console.Error.WriteLine($"{ee.Message}");
+                            Console.Error.WriteLine(
+                                $"Failed to rename to '{zipFilename}'");
+                        }
+                        break;
 
-                case (true, false):
-                    if (File.Exists(zipFilename))
-                    {
-                        File.Delete(zipFilename);
-                    }
-                    break;
+                    case (true, true):
+                        try
+                        {
+                            new FileInfo(zipFilename)
+                                .MoveTo(temp2Pathname);
+                            new FileInfo(zShadowOutputPathName)
+                                .MoveTo(zipFilename);
+                        }
+                        catch (Exception ee)
+                        {
+                            Console.Error.WriteLine($"{ee.Message}");
+                            Console.Error.WriteLine(
+                                $" Failed while rename file '{zipFilename}'");
+                        }
+                        finally
+                        {
+                            if (File.Exists(temp2Pathname))
+                            {
+                                File.Delete(temp2Pathname);
+                            }
+                        }
+                        break;
 
-                default:
-                    Console.Error.WriteLine(
-                        " Failed by some unknown error!");
-                    break;
+                    case (true, false):
+                        if (File.Exists(zipFilename))
+                        {
+                            File.Delete(zipFilename);
+                        }
+                        break;
+
+                    default:
+                        Console.Error.WriteLine(
+                            " Failed by some unknown error!");
+                        break;
+                }
+
+                return 0;
             }
-
-            return 0;
+            finally
+            {
+                if (File.Exists(zipFilename) &&
+                    new FileInfo(zipFilename).Length < 10)
+                {
+                    File.Delete(zipFilename);
+                }
+            }
         }
 
-        bool AddToZip(string filename, ZipOutputStream zs)
+        static bool AddToZip(string filename, ZipOutputStream zs)
         {
             try
             {
@@ -310,6 +299,48 @@ namespace zip2.create
             }
         }
 
+        static (int, int) InvokeAddToZip(
+            string zipFilename,
+            string shadowOutputPathName)
+        {
+            int countAddedIntoZip = 0;
+            int countMovedToArchivedDir = 0;
+
+            using (var realOutputFile = File.Create(zipFilename))
+            {
+                realOutputFile.Write(new byte[] { 19, 97, 7, 1 });
+                using (ZipOutputStream zs = new ZipOutputStream(
+                    File.Create(shadowOutputPathName)))
+                {
+                    zs.UseZip64 = UseZip64.Dynamic;
+                    zs.SetLevel(CompressLevel);
+
+                    if (!string.IsNullOrEmpty(Password))
+                    {
+                        zs.Password = Password;
+                    }
+
+                    foreach (var filename in FilenamesToBeBackup)
+                    {
+                        ItemPrint(filename);
+
+                        bool addResult = AddToZip( filename, zs);
+
+                        ItemPrint(Environment.NewLine);
+                        if (!addResult) continue;
+
+                        countAddedIntoZip += 1;
+                        countMovedToArchivedDir += MoveToArchivedDir(filename)
+                            ? 1 : 0;
+                    }
+
+                    zs.Finish();
+                    zs.Close();
+                }
+            }
+            return (countAddedIntoZip, countMovedToArchivedDir);
+        }
+
         static ImmutableDictionary<string, string[]> SwitchShortCuts =
             new Dictionary<string, string[]>
             {
@@ -327,7 +358,7 @@ namespace zip2.create
                 ["-T"] = FilesFromPrefix,
             }.ToImmutableDictionary<string, string>();
 
-        List<string> FilenamesToBeBackup = new List<string>();
+        static List<string> FilenamesToBeBackup = new List<string>();
 
         public override bool Parse(IEnumerable<string> args)
         {
@@ -379,10 +410,10 @@ namespace zip2.create
                     }
                 });
 
-        static public Func<string,bool> PostArchivedFucntion
+        static public Func<string,bool> MoveToArchivedDir
         { get; private set; } = (_) => false;
 
-        static readonly ParameterSwitch PostArchived =
+        static readonly ParameterSwitch MoveToArchivedDirSwitch =
         new ParameterSwitch("move-after-archived",
         help: "move archived files to \"zip2archived <TIMESTAMP>\"",
         whenSwitch: () =>
@@ -390,7 +421,7 @@ namespace zip2.create
             var dirMoveTo = "zip2archived "
                 + DateTime.Now.ToString("s").Replace(":", "-")
                 + "." + DateTime.Now.ToString("fff");
-            PostArchivedFucntion = (fname) =>
+            MoveToArchivedDir = (fname) =>
             {
                 if (string.IsNullOrEmpty(fname) ||
                 !File.Exists(fname)) return false;
@@ -415,13 +446,16 @@ namespace zip2.create
             };
         });
 
+        static public Func<string, string, (int,int)> InvokeAddToZipFucntion
+        { get; private set; } = InvokeAddToZip;
+
         static IParser[] opts =
         {
             Quiet,
             TotalOff,
             FilesFrom,
             CompressLevel,
-            PostArchived,
+            MoveToArchivedDirSwitch,
             Password,
             PasswordFrom,
             PasswordFromRaw,

@@ -313,9 +313,9 @@ namespace zip2.list
                 OptionShortCuts, SwitchShortCuts,
                 optionalAction:() =>
                 {
-                    Console.Write($"  {ExclFilePrefix,19}");
+                    Console.Write($" {ExclFilePrefix,23}");
                     Console.WriteLine("FILENAME[,FILEWILD ..]");
-                    Console.Write($"  {ExclDirPrefix,19}");
+                    Console.Write($" {ExclDirPrefix,23}");
                     Console.WriteLine("DIRNAME[,DIRWILD] ..]");
                 });
         }
